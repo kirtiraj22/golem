@@ -11,7 +11,11 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
-  },
-};
+    resolveAlias: {
+      fs: { browser: "./src/empty-module.ts" },
+      path: { browser: "./src/empty-module.ts" },
+      os: { browser: "./src/empty-module.ts" },
+    },
+  },};
 
 export default nextConfig;
