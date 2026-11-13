@@ -1,0 +1,792 @@
+[
+  {
+    "backstories": [
+      {
+        "type": "message",
+        "text": "Pagi ini, aku membuka mata dengan perasaan enggan. Semangat untuk beraktivitas telah sirna, tergantikan oleh rasa lelah dan putus asa.",
+        "skippable": true
+      },
+      {
+        "type": "message",
+        "text": "Bangun dari tempat tidur terasa bagaikan mendaki gunung Everest. Setiap langkah terasa berat, dan setiap tarikan napas terasa sesak.",
+        "skippable": true
+      },
+      {
+        "type": "message",
+        "text": "Dulu, aku selalu bersemangat untuk pergi ke kampus. Aku senang bertemu teman-teman, mengikuti perkuliahan, dan berdiskusi dengan dosen. Namun, kini semua itu terasa hampa. Aku kehilangan minat pada semua hal, termasuk kuliah. Aku lebih memilih untuk mengurung diri di kamar, tenggelam dalam lautan kesedihan dan pikiran negatif.",
+        "skippable": true
+      }
+    ],
+    "quizzes": [
+      {
+        "type": "quizzes",
+        "text": "Aku tidak mendapatkan pekerjaan yang aku inginkan. 'aku gagal total. aku tidak akan pernah mendapatkan pekerjaan yang aku suka.' ",
+        "answer": 0,
+        "options": [
+          "All-or-Nothing Thinking",
+          "Mental Filtering",
+          "Overgeneralization",
+          "Disqualifying the Positive"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'All-or-Nothing Thinking' membuatnya melihat situasi secara ekstrem. Penting untuk fokus pada kemajuan dan tidak menilai diri sendiri berdasarkan satu kesalahan.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'All-or-Nothing Thinking' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Temanku membatalkan rencana di menit terakhir. Kurasa mereka sudah tidak menyukaiku lagi.",
+        "answer": 1,
+        "options": [
+          "Mind Reading",
+          "Catastrophizing",
+          "Emotional Reasoning",
+          "Should Statements"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Catastrophizing' membuatnya melihat situasi secara berlebihan. Penting untuk tetap rasional,krisis dan realistis.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Catastrophizing' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Aku menerima nilai bagus pada tugasku tetapi sesungguhnya itu ujian yang mudah, atau guru hanya bersikap baik kepada aku.'",
+        "answer": 3,
+        "options": [
+          "Mind Reading",
+          "Minimization",
+          "Emotional Reasoning",
+          "Discounting the Positive"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Discounting The Positive' membuatnya hanya bisa melihat situasi buruh. Penting untuk tetap rasional,krisis dan realistis.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Discounting The Positive' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "backstories": [
+      {
+        "type": "message",
+        "text": "Aku selalu merasa berbeda dari anak-anak lain. Aku lebih suka membaca buku daripada bermain di luar, dan aku sering merasa kesepian.",
+        "skippable": true
+      },
+      {
+        "type": "message",
+        "text": "Orang tuaku selalu mendorongku untuk menjadi dokter atau pengacara, tetapi aku tidak tertarik dengan bidang itu. Aku ingin menjadi penulis, tetapi mereka tidak mendukung mimpiku.",
+        "skippable": true
+      },
+      {
+        "type": "message",
+        "text": "Aku sering diintimidasi di sekolah karena aku berbeda. Aku merasa malu dan tidak berharga, dan aku selalu takut pergi ke sekolah.",
+        "skippable": true
+      }
+    ],
+    "quizzes": [
+      {
+        "type": "quizzes",
+        "text": "Aku tidak pandai matematika. 'Aku bodoh, aku tidak akan pernah bisa memahami matematika.'",
+        "answer": 1,
+        "options": [
+          "Mind Reading",
+          "Labeling",
+          "Overgeneralization",
+          "Disqualifying the Positive"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Labeling' membuatnya menyimpulkan kemampuannya berdasarkan satu subjek. Penting untuk fokus pada proses belajar dan tidak menilai diri sendiri berdasarkan satu kelemahan.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Labeling' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Aku selalu gagal dalam tes olahraga. 'Aku tidak atletis, aku tidak akan pernah bisa berolahraga dengan baik.'",
+        "answer": 2,
+        "options": [
+          "Mind Reading",
+          "Labeling",
+          "Overgeneralization",
+          "Disqualifying the Positive"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Overgeneralization' membuatnya menyimpulkan kemampuannya berdasarkan beberapa pengalaman. Penting untuk fokus pada kemajuan dan tidak menilai diri sendiri berdasarkan satu kegagalan.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Overgeneralization' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Aku tidak memiliki banyak teman. 'Aku tidak disukai, aku tidak akan pernah memiliki banyak teman.'",
+        "answer": 3,
+        "options": [
+          "Mind Reading",
+          "Labeling",
+          "Overgeneralization",
+          "Disqualifying the Positive"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Disqualifying the Positive' membuatnya hanya bisa melihat sisi negatif dari situasi. Penting untuk fokus pada koneksi positif dan tidak menilai diri sendiri berdasarkan satu pengalaman.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Disqualifying the Positive' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "backstories": [
+      {
+        "type": "message",
+        "text": "Aku selalu dimarahi orang tuaku karena nilaiku jelek. Aku merasa bodoh dan tidak berharga.",
+        "skippable": true
+      },
+      {
+        "type": "message",
+        "text": "Aku iri dengan teman-teman yang memiliki keluarga harmonis. Keluargaku sering bertengkar, dan aku merasa tidak aman dan tidak dicintai.",
+        "skippable": true
+      },
+      {
+        "type": "message",
+        "text": "Aku sering sakit-sakitan saat kecil. Aku tidak bisa bermain dengan bebas seperti teman-teman lainnya, dan aku merasa kesepian.",
+        "skippable": true
+      }
+    ],
+    "quizzes": [
+      {
+        "type": "quizzes",
+        "text": "Aku dimarahi karena memecahkan barang. 'Aku anak yang nakal, aku tidak akan pernah bisa melakukan sesuatu dengan benar.'",
+        "answer": 0,
+        "options": [
+          "Labeling",
+          "Personalization",
+          "Catastrophizing",
+          "Should Statements"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Labeling' membuatnya menyimpulkan dirinya berdasarkan satu kesalahan. Penting untuk belajar dari kesalahan dan tidak terjebak pada label negatif.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Labeling' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Aku tidak terpilih menjadi ketua kelas. 'Aku tidak disukai teman-teman, aku tidak akan pernah bisa menjadi pemimpin yang baik.'",
+        "answer": 2,
+        "options": [
+          "Mind Reading",
+          "Personalization",
+          "Overgeneralization",
+          "Should Statements"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Overgeneralization' membuatnya menyimpulkan penerimaan orang lain berdasarkan satu kejadian. Penting untuk fokus pada potensi dan tidak menilai diri sendiri berdasarkan satu kekecewaan.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Overgeneralization' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Aku kalah dalam lomba menggambar. 'Aku tidak berbakat, aku tidak akan pernah bisa menggambar dengan baik.'",
+        "answer": 3,
+        "options": [
+          "Mind Reading",
+          "Labeling",
+          "Overgeneralization",
+          "Disqualifying the Positive"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Disqualifying the Positive' membuatnya hanya melihat sisi negatif dari pengalamannya. Penting untuk belajar dari kekalahan dan tidak menilai diri sendiri berdasarkan satu kompetisi.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Disqualifying the Positive' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "backstories": [
+      {
+        "type": "message",
+        "text": "Aku dulu sering diejek karena memakai kacamata. Aku merasa malu dan tidak percaya diri.",
+        "skippable": true
+      },
+      {
+        "type": "message",
+        "text": "Aku pemalu dan tidak bisa berbicara dengan lancar di depan umum. Aku takut orang lain akan menertawakanku.",
+        "skippable": true
+      },
+      {
+        "type": "message",
+        "text": "Aku tidak pandai bernyanyi atau menari. Aku iri dengan teman-teman yang bisa tampil di atas panggung dengan percaya diri.",
+        "skippable": true
+      }
+    ],
+    "quizzes": [
+      {
+        "type": "quizzes",
+        "text": "Aku diejek karena memakai kacamata. 'Aku jelek, aku tidak akan pernah bisa diterima teman-teman.'",
+        "answer": 1,
+        "options": [
+          "Mind Reading",
+          "Personalization",
+          "Catastrophizing",
+          "Should Statements"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Personalization' membuat dia merasa bertanggung jawab atas perilaku orang lain. Penting untuk fokus pada diri sendiri dan tidak terpengaruh oleh ejekan.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Personalization' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Aku tidak bisa menjawab pertanyaan guru di depan kelas. 'Aku bodoh, aku tidak akan pernah bisa pintar.'",
+        "answer": 0,
+        "options": [
+          "Labeling",
+          "Personalization",
+          "Catastrophizing",
+          "Should Statements"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Labeling' membuatnya menyimpulkan kemampuannya berdasarkan satu kejadian. Penting untuk belajar dari kesalahan dan tidak terjebak pada label negatif.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Labeling' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Aku tidak terpilih menjadi anggota pentas drama. 'Aku tidak berbakat, aku tidak akan pernah bisa tampil di depan umum.'",
+        "answer": 3,
+        "options": [
+          "Mind Reading",
+          "Labeling",
+          "Overgeneralization",
+          "Disqualifying the Positive"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Disqualifying the Positive' membuatnya hanya melihat sisi negatif dari pengalamannya. Penting untuk terus berlatih dan tidak menilai diri sendiri berdasarkan satu kesempatan.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Disqualifying the Positive' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "backstories": [
+      {
+        "type": "message",
+        "text": "Aku selalu merasa tertinggal dari teman-teman sekelasku. Mereka bisa membaca lebih cepat, mengerjakan matematika lebih mudah, dan sepertinya mengerti segalanya dengan cepat.",
+        "skippable": true
+      },
+      {
+        "type": "message",
+        "text": "Aku tidak pandai olahraga dan selalu menjadi yang terakhir dipilih saat bermain tim. Aku merasa tidak berguna dan tidak berbakat dalam hal apapun.",
+        "skippable": true
+      },
+      {
+        "type": "message",
+        "text": "Aku tidak memiliki barang-barang branded seperti teman-temanku. Mereka selalu memamerkan sepatu dan tas baru, dan aku merasa minder karena tidak bisa memilikinya.",
+        "skippable": true
+      }
+    ],
+    "quizzes": [
+      {
+        "type": "quizzes",
+        "text": "Aku belum bisa membaca lancar. 'Aku bodoh, aku tidak akan pernah bisa sepintar teman-teman.'",
+        "answer": 1,
+        "options": [
+          "Mind Reading",
+          "Labeling",
+          "Catastrophizing",
+          "Should Statements"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Labeling' membuatnya menyimpulkan kemampuannya berdasarkan pencapaian saat ini. Penting untuk fokus pada kemajuan dan terus belajar.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Labeling' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Aku tidak terpilih saat bermain basket. 'Aku tidak berguna, aku tidak akan pernah bisa menjadi atlet yang baik.'",
+        "answer": 2,
+        "options": [
+          "Mind Reading",
+          "Personalization",
+          "Overgeneralization",
+          "Should Statements"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Overgeneralization' membuatnya menyimpulkan kemampuannya berdasarkan satu pengalaman. Penting untuk terus berlatih dan tidak menilai diri sendiri berdasarkan satu kekecewaan.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Overgeneralization' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Teman-temanku memiliki handphone terbaru. 'Aku tidak mampu membeli barang bagus, aku tidak akan pernah bisa diterima mereka.'",
+        "answer": 0,
+        "options": [
+          "Labeling",
+          "Personalization",
+          "Catastrophizing",
+          "Should Statements"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Labeling' membuatnya menilai dirinya sendiri berdasarkan kepemilikan barang. Penting untuk fokus pada hal yang lebih berharga dari sekedar kepemilikan.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Labeling' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "backstories": [
+      {
+        "type": "message",
+        "text": "Aku selalu merasa berbeda dari anak-anak lain. Aku lebih suka membaca buku daripada bermain di luar, dan aku sering merasa kesepian.",
+        "skippable": true
+      },
+      {
+        "type": "message",
+        "text": "Orang tuaku selalu mendorongku untuk menjadi dokter atau pengacara, tetapi aku tidak tertarik dengan bidang itu. Aku ingin menjadi penulis, tetapi mereka tidak mendukung mimpiku.",
+        "skippable": true
+      },
+      {
+        "type": "message",
+        "text": "Aku sering diintimidasi di sekolah karena aku berbeda. Aku merasa malu dan tidak berharga, dan aku selalu takut pergi ke sekolah.",
+        "skippable": true
+      }
+    ],
+    "quizzes": [
+      {
+        "type": "quizzes",
+        "text": "Aku tidak pandai matematika. 'Aku bodoh, aku tidak akan pernah bisa memahami matematika.'",
+        "answer": 1,
+        "options": [
+          "Mind Reading",
+          "Labeling",
+          "Overgeneralization",
+          "Disqualifying the Positive"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Labeling' membuatnya menyimpulkan kemampuannya berdasarkan satu subjek. Penting untuk fokus pada proses belajar dan tidak menilai diri sendiri berdasarkan satu kelemahan.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Labeling' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Aku selalu gagal dalam tes olahraga. 'Aku tidak atletis, aku tidak akan pernah bisa berolahraga dengan baik.'",
+        "answer": 2,
+        "options": [
+          "Mind Reading",
+          "Labeling",
+          "Overgeneralization",
+          "Disqualifying the Positive"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Overgeneralization' membuatnya menyimpulkan kemampuannya berdasarkan beberapa pengalaman. Penting untuk fokus pada kemajuan dan tidak menilai diri sendiri berdasarkan satu kegagalan.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Overgeneralization' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Aku tidak memiliki banyak teman. 'Aku tidak disukai, aku tidak akan pernah memiliki banyak teman.'",
+        "answer": 3,
+        "options": [
+          "Mind Reading",
+          "Labeling",
+          "Overgeneralization",
+          "Disqualifying the Positive"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Disqualifying the Positive' membuatnya hanya bisa melihat sisi negatif dari situasi. Penting untuk fokus pada koneksi positif dan tidak menilai diri sendiri berdasarkan satu pengalaman.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Disqualifying the Positive' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "backstories": [
+      {
+        "type": "message",
+        "text": "Aku selalu penasaran dengan dunia luar, tapi orang tuaku sangat protektif dan jarang mengizinkanku keluar rumah. Aku merasa terkurung dan bosan.",
+        "skippable": true
+      }
+    ],
+    "quizzes": [
+      {
+        "type": "quizzes",
+        "text": "Orang tuaku tidak mengizinkan pergi ke pesta ulang tahun temanku. 'Aku tidak disukai, mereka pasti tidak ingin aku datang.'",
+        "answer": 0,
+        "options": [
+          "Mind Reading",
+          "Labeling",
+          "Overgeneralization",
+          "Disqualifying the Positive"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Mind Reading'  membuatnya berasumsi  dirinya tidak disukai tanpa bukti.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Mind Reading' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Aku dimarahi karena pulang terlambat saat bermain. 'Aku anak yang nakal, aku tidak bisa dipercaya.'",
+        "answer": 1,
+        "options": [
+          "Mind Reading",
+          "Labeling",
+          "Overgeneralization",
+          "Disqualifying the Positive"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Labeling' membuatnya menyimpulkan dirinya berdasarkan satu kesalahan. Penting untuk belajar dari kesalahan dan tidak terjebak pada label negatif.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Labeling' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Aku ingin ikut lomba melukis tapi tidak diizinkan karena takut kalah. 'Aku tidak berbakat, pasti akan kalah.'",
+        "answer": 3,
+        "options": [
+          "Mind Reading",
+          "Labeling",
+          "Overgeneralization",
+          "Disqualifying the Positive"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Disqualifying the Positive' membuatnya hanya melihat sisi negatif dari pengalamannya. Penting untuk terus berlatih dan tidak menilai diri sendiri berdasarkan ketakutan gagal.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Disqualifying the Positive' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "backstories": [
+      {
+        "type": "message",
+        "text": "Aku selalu dimarahi orang tuaku karena nilaiku jelek. Aku merasa bodoh dan tidak berharga.",
+        "skippable": true
+      },
+      {
+        "type": "message",
+        "text": "Aku iri dengan teman-teman yang memiliki keluarga harmonis. Keluargaku sering bertengkar, dan aku merasa tidak aman dan tidak dicintai.",
+        "skippable": true
+      },
+      {
+        "type": "message",
+        "text": "Aku sering sakit-sakitan saat kecil. Aku tidak bisa bermain dengan bebas seperti teman-teman lainnya, dan aku merasa kesepian.",
+        "skippable": true
+      }
+    ],
+    "quizzes": [
+      {
+        "type": "quizzes",
+        "text": "Aku dimarahi karena memecahkan barang. 'Aku anak yang nakal, aku tidak akan pernah bisa melakukan sesuatu dengan benar.'",
+        "answer": 0,
+        "options": [
+          "Labeling",
+          "Personalization",
+          "Catastrophizing",
+          "Should Statements"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Labeling' membuatnya menyimpulkan dirinya berdasarkan satu kesalahan. Penting untuk belajar dari kesalahan dan tidak terjebak pada label negatif.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Labeling' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Aku tidak terpilih menjadi ketua kelas. 'Aku tidak disukai teman-teman, aku tidak akan pernah bisa menjadi pemimpin yang baik.'",
+        "answer": 2,
+        "options": [
+          "Mind Reading",
+          "Personalization",
+          "Overgeneralization",
+          "Should Statements"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Overgeneralization' membuatnya menyimpulkan penerimaan orang lain berdasarkan satu kejadian. Penting untuk fokus pada potensi dan tidak menilai diri sendiri berdasarkan satu kekecewaan.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Overgeneralization' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Aku kalah dalam lomba menggambar. 'Aku tidak berbakat, aku tidak akan pernah bisa menggambar dengan baik.'",
+        "answer": 3,
+        "options": [
+          "Mind Reading",
+          "Labeling",
+          "Overgeneralization",
+          "Disqualifying the Positive"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Disqualifying the Positive' membuatnya hanya melihat sisi negatif dari pengalamannya. Penting untuk belajar dari kekalahan dan tidak menilai diri sendiri berdasarkan satu kompetisi.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Disqualifying the Positive' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "backstories": [
+      {
+        "type": "message",
+        "text": "Aku tidak pandai seni dan selalu merasa frustrasi saat mengikuti pelajaran seni. Aku iri dengan teman-teman yang bisa melukis dan menggambar dengan indah.",
+        "skippable": true
+      }
+    ],
+    "quizzes": [
+      {
+        "type": "quizzes",
+        "text": "Aku tidak bisa menggambar dengan baik. 'Aku tidak kreatif, aku tidak akan pernah bisa ber seni.'",
+        "answer": 1,
+        "options": [
+          "Labeling",
+          "Personalization",
+          "Overgeneralization",
+          "Disqualifying the Positive"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Labeling' membuatnya menyimpulkan dirinya berdasarkan keterampilan seni. Penting untuk mencoba hal baru dan tidak membatasi kreativitas dengan label.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Labeling' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Lukisanku tidak sebagus teman sekelasku. 'Aku tidak berbakat, aku tidak akan pernah bisa menjadi seniman.'",
+        "answer": 2,
+        "options": [
+          "Labeling",
+          "Personalization",
+          "Overgeneralization",
+          "Disqualifying the Positive"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Overgeneralization' membuatnya membandingkan dirinya dengan orang lain dan menyimpulkan bakatnya secara keseluruhan. Penting untuk fokus pada kemajuan dan menikmati proses belajar seni.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Overgeneralization' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      },
+      {
+        "type": "quizzes",
+        "text": "Aku merasa gagal saat mengikuti kelas seni. 'Aku tidak akan pernah bisa belajar seni, lebih baik aku menyerah.'",
+        "answer": 3,
+        "options": [
+          "Labeling",
+          "Personalization",
+          "Overgeneralization",
+          "Disqualifying the Positive"
+        ],
+        "response": {
+          "correct": {
+            "type": "message",
+            "text": "Kamu berhasil menyerang dia, Pikiran 'Disqualifying the Positive' membuatnya hanya fokus pada pengalaman negatif dan mengabaikan potensi belajar.",
+            "skippable": true
+          },
+          "wrong": {
+            "type": "message",
+            "text": "Jawaban kamu salah, dia berhasil menyerangmu. Pikiran 'Disqualifying the Positive' adalah jawaban yang benar. Mari kita coba lagi!",
+            "skippable": true
+          }
+        }
+      }
+    ]
+  }
+]

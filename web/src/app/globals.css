@@ -1,26 +1,125 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* GAME UI */
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+  --game-viewport-width: 180px;
+  --game-viewport-height: 180px; 
+  --game-cell-size: 16px;
+  --pixel-size: 1;
+  --ui-popup-z-index: 500;
+
+  /* DIALOG UI */
+  --border-color: #291d4d;
+  --dialog-background: #fff3b4;
+
+  --menu-background: #ffe8d2;
+  --menu-border-color: #a48465;
+  --menu-font-color: #3a160d;
+  --menu-selected-background: #7fc2ff;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+canvas {
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-crisp-edges;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+
+
+html,
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px !important;
+  letter-spacing: 4px;
+  overflow-y: hidden;
+
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  margin: 0;
+
+}
+
+@layer base {
+  html {
+    font-family: Arial, Helvetica, sans-serif;
+  }
+}
+
+span,
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+div,
+input {
+  font-family: Arial, Helvetica, sans-serif;
+  letter-spacing: 2px;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background-color: #251404;
+}
+
+/* Scale up game art if we can fit it. 2x */
+@media(min-width: 360px) {
+  :root {
+    /*--pixel-size: 2;*/
+    --pixel-size: 3;
+    /* Using this for better screen capture layout */
+  }
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* 3x */
+@media(min-width: 540px) {
+  :root {
+    --pixel-size: 3;
+  }
+}
+
+/* !*4x*!*/
+@media(min-width: 720px) {
+  :root {
+    --pixel-size: 4;
+  }
+}
+
+/*!* 5x *!*/
+@media(min-width: 900px) {
+  :root {
+    --pixel-size: 5;
+  }
+}
+
+/*!* 6x *!*/
+@media(min-width: 1080px) {
+  :root {
+    --pixel-size: 6;
+  }
+}
+
+/*!* 7x *!*/
+@media(min-width: 1260px) {
+  :root {
+    --pixel-size: 7;
+  }
 }
