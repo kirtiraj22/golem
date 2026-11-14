@@ -1,0 +1,16 @@
+{
+  "extends": "next/core-web-vitals",
+  "rules": {
+    // I'll remove this later
+    "@typescript-eslint/no-explicit-any": "off" // Disable the no-explicit-any rule
+  },
+  "next": {
+    "env": {
+      // ... other Next.js build configurations
+    },
+    "eslint": {
+      // This disables the rule only during Next.js builds
+      "ignoreDuringBuilds": true
+    }
+  }
+}

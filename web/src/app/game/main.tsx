@@ -2,6 +2,9 @@
 import React, { createContext, useEffect, useState } from "react";
 import { SPRITESHEET_IMAGE_SRC } from "~/constants/helpers";
 import RenderLevel from "./components/level-layout/render-level";
+import MarketHud from "./components/hud/market-hud";
+import { EconomyProvider } from "./contexts/economy-context";
+import { MarketUiProvider } from "./contexts/market-ui-context";
 import soundManager from "./classes/sounds";
 
 interface SpriteSheetImage {
@@ -42,10 +45,23 @@ const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   );
 };
 
-const Game = () => {
+type GameProps = {
+  levelConfig?: any;
+  showLegacyHud?: boolean;
+};
+
+const Game = ({ levelConfig, showLegacyHud = false }: GameProps = {}) => {
   return (
     <GameProvider>
-      <RenderLevel />
+      <EconomyProvider>
+        <MarketUiProvider>
+          <RenderLevel
+            levelConfig={levelConfig}
+            showLegacyHud={showLegacyHud}
+          />
+          <MarketHud />
+        </MarketUiProvider>
+      </EconomyProvider>
     </GameProvider>
   );
 };

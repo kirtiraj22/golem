@@ -1,6 +1,15 @@
 /* eslint-disable jsx-a11y/alt-text */
 /* eslint-disable @next/next/no-img-element */
 "use client";
+
+/**
+ * LEGACY: Cognivirues Outbreak startup/tutorial flow.
+ *
+ * This component is preserved for reference, but the active homepage no
+ * longer imports it. The /menu route redirects to the Copper Stall title
+ * screen so the tutorial, journal, and cognitive-distortion startup sequence
+ * cannot be launched accidentally.
+ */
 import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import progressEntry from "../game/classes/progress-entry";
 import { useRouter } from "next/navigation";

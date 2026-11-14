@@ -7,7 +7,7 @@
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
   --game-viewport-width: 180px;
-  --game-viewport-height: 180px; 
+  --game-viewport-height: 180px;
   --game-cell-size: 16px;
   --pixel-size: 1;
   --ui-popup-z-index: 500;
@@ -22,15 +22,12 @@
   --menu-selected-background: #7fc2ff;
 }
 
-
 canvas {
   image-rendering: -moz-crisp-edges;
   image-rendering: -webkit-crisp-edges;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
-
-
 
 html,
 body {
@@ -44,7 +41,6 @@ body {
   height: 100vh;
   overflow: hidden;
   margin: 0;
-
 }
 
 @layer base {
@@ -72,8 +68,69 @@ body {
   background-color: #251404;
 }
 
+/*
+ * The global game UI forces Arial onto most elements. Keep the retro pixel
+ * font scoped to the market HUD and its portaled Select dropdowns.
+ */
+.market-hud * {
+  font-family: inherit !important;
+  letter-spacing: inherit !important;
+}
+
+/* Keep disabled market actions readable instead of fading into the panel. */
+.market-hud button:disabled {
+  background-color: #d8cdb5 !important;
+  box-shadow: 2px 2px 0 #6d5a44 !important;
+  color: #4a3118 !important;
+  cursor: not-allowed;
+  opacity: 1 !important;
+}
+
+.market-select-dropdown * {
+  font-family: inherit !important;
+  letter-spacing: inherit !important;
+}
+
+/* Small world-space trade receipt shown when a real NPC trade is replayed. */
+.market-trade-notice {
+  background: #fff6d6;
+  border: 2px solid #2b1a08;
+  box-shadow: 2px 2px 0 #2b1a08;
+  color: #2b1a08;
+  font-family: monospace;
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  padding: 2px 4px;
+  pointer-events: none;
+  position: absolute;
+  text-align: center;
+  transform: translate(-50%, -100%);
+  white-space: nowrap;
+  animation: market-trade-notice-float 2.5s ease-out forwards;
+}
+
+@keyframes market-trade-notice-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -88%) scale(0.96);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1);
+  }
+  72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -168%) scale(1);
+  }
+}
+
 /* Scale up game art if we can fit it. 2x */
-@media(min-width: 360px) {
+@media (min-width: 360px) {
   :root {
     /*--pixel-size: 2;*/
     --pixel-size: 3;
@@ -90,35 +147,35 @@ body {
 }
 
 /* 3x */
-@media(min-width: 540px) {
+@media (min-width: 540px) {
   :root {
     --pixel-size: 3;
   }
 }
 
 /* !*4x*!*/
-@media(min-width: 720px) {
+@media (min-width: 720px) {
   :root {
     --pixel-size: 4;
   }
 }
 
 /*!* 5x *!*/
-@media(min-width: 900px) {
+@media (min-width: 900px) {
   :root {
     --pixel-size: 5;
   }
 }
 
 /*!* 6x *!*/
-@media(min-width: 1080px) {
+@media (min-width: 1080px) {
   :root {
     --pixel-size: 6;
   }
 }
 
 /*!* 7x *!*/
-@media(min-width: 1260px) {
+@media (min-width: 1260px) {
   :root {
     --pixel-size: 7;
   }

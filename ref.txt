@@ -1,0 +1,577 @@
+# GOLEM — Full Backend Implementation
+
+Act as a senior Solana/Anchor protocol engineer and full-stack TypeScript architect. Your task is to implement the complete backend for **Golem**, an on-chain human-powered content evaluation and reward marketplace.
+
+This is a real hackathon project, not a tutorial or a conceptual prototype. I need working, secure, internally consistent code that integrates with my existing repository. Prioritize correctness, simplicity, and implementation speed. Do not overengineer.
+
+## 1. Product context
+
+Golem allows companies and creators to evaluate images through human participation.
+
+The workflow:
+
+1. A company connects its Solana wallet and creates a campaign.
+2. It uploads a collection of images and specifies the campaign budget and voting rules.
+3. It deposits the campaign budget in native SOL into an on-chain escrow.
+4. Participants connect their wallets and classify each image as either `AI_GENERATED` or `HUMAN_CREATED`.
+5. Each participant can vote only once per image.
+6. Once voting ends, the on-chain program determines the majority classification for each image.
+7. Participants whose votes match the majority become eligible to claim an equal share of that image's reward pool.
+8. After the claim period expires, the company can recover all remaining funds.
+
+**Important product distinction:** Golem measures human consensus, not objectively verified AI-detection accuracy. A majority vote is the winning classification; it must never be represented as verified ground truth.
+
+There is no AI model, AI inference service, AI detection API, or AI-generated prediction functionality in this implementation. Humans perform the classification.
+
+## 2. Technical architecture
+
+The project has two primary layers.
+
+### A. Solana program — authoritative business logic
+
+Use Anchor and native SOL.
+
+The blockchain must be the source of truth for:
+- Campaign configuration and lifecycle.
+- Campaign funding and escrow balances.
+- Asset registration and content hashes.
+- Individual votes and duplicate-vote prevention.
+- Per-asset vote counts.
+- Finalized classifications.
+- Reward eligibility and claim status.
+- Refunds and settlement.
+
+Never trust frontend-submitted vote counts, results, reward amounts, or transaction-success claims.
+
+### B. Next.js + Supabase — application backend
+
+Use Supabase for:
+- Campaign descriptions and additional metadata.
+- Asset metadata and image storage.
+- User profiles and wallet-linked identities.
+- Campaign discovery and filtering.
+- Cached on-chain campaign and asset information.
+- Transaction history and indexing.
+- Analytics and exports.
+
+Supabase is an application-data layer, NOT the authority for voting, results, reward calculations, or payouts.
+
+Use SHA-256 hashes to associate uploaded images with their corresponding on-chain asset accounts. Do not store image files or media URLs on-chain.
+
+## 3. Existing development environment
+
+My project is located at:
+
+`/home/kirtiraj/projects/golem`
+
+Current repository structure:
+
+- `docs/`
+- `supabase/migrations/`
+- `web/`
+- `onchain/`
+
+Environment:
+- Ubuntu through WSL.
+- Node.js 22.23.4.
+- npm 10.9.9.
+- Rust 1.97.0 nightly.
+- Solana CLI 3.1.11 (Agave).
+- Anchor CLI 1.0.2.
+- Solana RPC configured for Devnet.
+- Existing Solana wallet/keypair configured locally.
+- Next.js application already created inside `web/`.
+- Supabase project already created.
+- `web/.env.local` already contains `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+
+The Anchor project was initialized using the Anchor 1.0.2 single-program template inside `onchain/`, and its initial scaffold successfully compiled and passed its initial tests.
+
+I will provide the actual project configuration and source files after this prompt. Treat those files as authoritative.
+
+**Compatibility requirements:**
+- Preserve the existing Anchor 1.0.2 project structure and conventions.
+- Do not assume older Anchor APIs or blindly copy examples for Anchor 0.29/0.30.
+- Do not replace the project with a new scaffold.
+- Do not invent a program ID. Use the existing configured program ID and explain if one must be generated or synchronized.
+- Use compatible TypeScript dependencies and the existing Next.js setup.
+- Prefer `@anchor-lang/core` and compatible `@solana/web3.js` v1 APIs if supported by the actual project.
+- Do not introduce Solana Kit, unnecessary frameworks, or additional infrastructure without a compelling reason.
+- Use native SOL only. No SPL tokens, USDC, token mints, associated token accounts, or token CPI.
+
+## 4. On-chain program requirements
+
+Implement the following account model.
+
+### Campaign PDA
+
+Seeds:
+
+`["campaign", company_wallet, campaign_id]`
+
+Store:
+- Company wallet.
+- Campaign ID.
+- Total campaign budget in lamports.
+- Expected asset count.
+- Registered asset count.
+- Minimum votes required per asset.
+- Voting deadline.
+- Claim deadline.
+- Campaign status.
+- Number of finalized assets.
+- Total amount claimed.
+- PDA bump.
+
+The Campaign PDA holds the native SOL escrow.
+
+### Asset PDA
+
+Seeds:
+
+`["asset", campaign, asset_index]`
+
+Store:
+- Campaign public key.
+- Asset index.
+- SHA-256 image content hash (`[u8; 32]`).
+- AI-generated vote count.
+- Human-created vote count.
+- Total vote count.
+- Finalized result.
+- Winning vote count.
+- Asset reward pool.
+- Total claimed amount.
+- Finalization state.
+- PDA bump.
+
+### Vote PDA
+
+Seeds:
+
+`["vote", asset, participant_wallet]`
+
+Store:
+- Asset public key.
+- Participant wallet.
+- Classification.
+- Whether the reward has been claimed.
+- PDA bump.
+
+A Vote PDA must guarantee that a wallet cannot vote twice on the same asset. It must also prevent duplicate reward claims.
+
+Avoid unnecessary accounts or complex abstractions.
+
+## 5. Required instructions
+
+Implement all eight instructions with proper account constraints, authorization, validation, events, and errors.
+
+**1. `create_campaign`**
+
+- Company wallet signs.
+- Initialize Campaign PDA.
+- Accept campaign ID, expected asset count, budget in lamports, minimum votes, voting deadline, and claim deadline.
+- Validate all inputs and deadlines.
+- Set initial status to `DRAFT`.
+
+**2. `register_asset`**
+
+- Company authorizes registration.
+- Initialize an Asset PDA for the specified index.
+- Store the SHA-256 content hash.
+- Prevent duplicate indices and registration beyond the declared asset count.
+- Only allow registration before funding.
+
+**3. `fund_campaign`**
+
+- Require all declared assets to be registered.
+- Transfer the exact declared budget in native SOL from the company to the Campaign PDA using the System Program.
+- Activate the campaign.
+- Prevent additional or duplicate funding.
+
+**4. `vote`**
+
+- Participant wallet signs.
+- Require an active campaign and an unexpired voting period.
+- Validate the asset belongs to the supplied campaign.
+- Initialize the participant's Vote PDA.
+- Increment the appropriate vote counter and total vote count.
+- Reject duplicate votes.
+
+**5. `close_campaign`**
+
+- Company may close an active campaign early.
+- Anyone may close it after its voting deadline.
+- Prevent additional votes once closed.
+- Do not allow arbitrary unauthorized early closure.
+
+**6. `finalize_asset`**
+
+- Permissionless after the campaign is closed or the voting deadline has passed.
+- Determine the final result from the on-chain counters.
+- Finalize an asset only once.
+- Update campaign finalization accounting.
+- Emit an event with the final result and vote counts.
+
+**7. `claim_reward`**
+
+- Participant signs.
+- Require the campaign to be closed and the asset finalized.
+- Require the participant's Vote PDA to exist.
+- Require the vote to match the winning classification.
+- Reject claims after the claim deadline.
+- Reject duplicate claims.
+- Calculate the participant's reward on-chain.
+- Transfer native SOL from escrow to the participant.
+- Update claim accounting safely.
+
+**8. `refund_campaign`**
+
+- Require the claim deadline to have passed.
+- Require every campaign asset to be finalized.
+- Return all remaining spendable escrow SOL to the original company.
+- Include unused rewards, tied assets, insufficient-vote assets, and integer-division remainders.
+- Mark the campaign as settled.
+- Prevent duplicate refunds.
+
+## 6. Consensus and reward calculations
+
+Implement these rules exactly.
+
+Each asset is evaluated independently.
+
+Final result:
+
+- If `total_votes < minimum_votes`: `INSUFFICIENT_VOTES`.
+- If AI votes exceed human votes: `AI_GENERATED`.
+- If human votes exceed AI votes: `HUMAN_CREATED`.
+- If both counts are equal: `TIE`.
+
+Reward allocation:
+
+- Divide the campaign budget equally among the declared number of assets.
+- Each asset receives `floor(total_budget / asset_count)` lamports as its reward pool.
+- For a finalized asset, divide its reward pool equally among participants who voted for the winning classification.
+- Each participant receives `floor(asset_reward_pool / winning_vote_count)` lamports.
+- Participants who voted against the majority receive nothing.
+- Tied or insufficient-vote assets have no reward claims.
+- All integer-division remainders remain in escrow and are refunded to the company after the claim deadline.
+
+Use integer lamports and safe checked arithmetic throughout. Never use floating-point calculations for money.
+
+The program must never pay more than the declared campaign budget.
+
+**Escrow safety is critical:**
+- Preserve the Campaign PDA's rent-exempt minimum.
+- Only transfer spendable escrow funds.
+- Prevent unauthorized withdrawals.
+- Prevent underflow, overflow, duplicate settlement, and overpayment.
+- Ensure all state changes and transfers occur atomically.
+- Validate every PDA, signer, owner, and account relationship.
+
+## 7. Supabase implementation
+
+Create the SQL migrations and required policies.
+
+Use a clean schema with tables for:
+- `profiles`
+- `campaign_metadata`
+- `asset_metadata`
+- `chain_transactions`
+
+Add suitable foreign keys, indexes, constraints, timestamps, and useful fields.
+
+Campaign and asset metadata should reference their corresponding on-chain accounts.
+
+Image storage:
+- Use a Supabase Storage bucket named `campaign-assets`.
+- Store image metadata, storage paths, MIME types, sizes, and SHA-256 hashes.
+- Use appropriate storage access policies.
+- Do not expose privileged Supabase credentials to the browser.
+
+Security:
+- Public frontend uses the Supabase publishable key.
+- Server-only privileged operations use `SUPABASE_SECRET_KEY`.
+- Never expose this secret through `NEXT_PUBLIC_` variables.
+- Implement appropriate Row Level Security policies.
+- Do not allow arbitrary users to modify another user's campaign metadata.
+- Do not create authoritative vote or reward tables.
+
+For privileged wallet-based operations, implement a simple signed-wallet challenge with expiration and replay prevention. Do not trust a wallet address supplied in a request body without signature verification.
+
+## 8. Next.js backend implementation
+
+Implement the backend using the existing App Router project.
+
+Include:
+- Supabase server and browser clients where needed.
+- Shared types and validation schemas.
+- Campaign metadata creation and retrieval.
+- Campaign discovery/listing.
+- Campaign detail retrieval.
+- Asset metadata creation and retrieval.
+- Secure image upload and hash generation.
+- Profile creation and retrieval.
+- Transaction verification and indexing.
+- Campaign and asset analytics based on authoritative on-chain state.
+- Appropriate API error handling and input validation.
+
+Use Zod for API validation.
+
+Never assume a transaction succeeded just because the frontend says it did. Verify transactions and relevant account state against Solana.
+
+Keep the API surface practical for a hackathon MVP. Avoid unnecessary services, queues, background infrastructure, or abstractions.
+
+## 9. Solana TypeScript integration
+
+Implement reusable client utilities for:
+- Connecting to Devnet.
+- Loading the generated Anchor IDL.
+- Connecting to the user's wallet.
+- Deriving Campaign, Asset, and Vote PDAs.
+- Fetching and decoding campaign and asset accounts.
+- Creating campaigns.
+- Registering assets.
+- Funding campaigns with SOL.
+- Voting.
+- Closing campaigns.
+- Finalizing assets.
+- Claiming rewards.
+- Refunding campaigns.
+
+All user-authorized transactions must be signed by the connected wallet. Never use a server-side private key to sign on behalf of participants or companies.
+
+Use the actual generated IDL and program configuration. Keep the client types consistent with the on-chain program.
+
+## 10. Code quality requirements
+
+- Produce complete, executable implementations.
+- No pseudocode, TODOs, fake implementations, or placeholder business logic.
+- No comments inside generated code.
+- Use strict TypeScript types.
+- Use `bigint` or appropriate BN handling for lamports and large integer values.
+- Use clear error types and meaningful validation.
+- Avoid duplicated logic.
+- Keep dependencies minimal.
+- Do not silently change existing configurations.
+- Do not invent environment variable values, program IDs, wallet addresses, or credentials.
+- Do not expose private keys or secrets.
+- Ensure the on-chain and off-chain implementations agree on account layouts, instruction arguments, PDA seeds, and status/result enums.
+
+## 11. How you must deliver the implementation
+
+This instruction is extremely important.
+
+I am using Claude Free through its website. I am NOT using Claude Code, and I do not want you to execute terminal commands, create files through tools, or produce a ZIP archive.
+
+I need the actual source code directly in your chat response so I can copy it into my repository.
+
+Follow this delivery order:
+
+**Stage 1 — Solana program**
+1. Program source and account definitions.
+2. Instructions, validation, errors, and events.
+3. Required Rust supporting modules.
+4. Anchor configuration changes only if necessary.
+5. On-chain tests.
+
+**Stage 2 — Supabase**
+1. SQL migrations.
+2. Tables, indexes, constraints, and RLS.
+3. Storage bucket policies.
+4. Required database types.
+
+**Stage 3 — Next.js backend**
+1. Dependencies and environment variable requirements.
+2. Supabase clients and shared utilities.
+3. Validation schemas and types.
+4. API routes.
+5. Wallet authentication and transaction verification.
+
+**Stage 4 — Solana client**
+1. Anchor provider and program client.
+2. PDA utilities.
+3. Account fetching.
+4. Transaction builders for every instruction.
+5. Shared types and integration helpers.
+
+### Mandatory output format
+
+For every file, use this exact format:
+
+`FILE: relative/path/to/file`
+
+Then provide its complete contents in an appropriate fenced code block.
+
+Generate files progressively. Do not prepare all files internally and then attempt to deliver everything at once.
+
+- Start delivering actual code as soon as you have enough project context.
+- Output complete files in dependency order.
+- Prefer several complete files per response rather than one enormous response.
+- Never omit a file's contents in favor of a summary.
+- Never repeat a file already delivered.
+- Do not insert long explanations between files.
+- Do not generate a ZIP or claim that files have been created locally.
+
+If you are approaching your response limit, finish the current file and print:
+
+`NEXT FILE TO GENERATE: exact/relative/path`
+
+Then stop. When I reply `CONTINUE`, resume with that exact file and continue the implementation without repeating earlier files.
+
+If a file depends on another file, generate the dependency first.
+
+If a technical issue genuinely prevents a correct implementation, explain the specific issue briefly and ask only for the missing information. Do not guess.
+
+At the end of each stage, provide a short list of files delivered and the commands I should run locally to validate them. Do not execute those commands yourself.
+
+**Your first action:** inspect the repository snapshot I provide below, identify any compatibility issues, and begin Stage 1. Do not respond with a generic architecture proposal or a plan alone. Start producing the actual implementation.
+
+---
+
+## EXISTING PROJECT SNAPSHOT
+
+I will paste the output of my existing project files below this line. Use it as the source of truth.
+
+===== ONCHAIN FILES =====
+onchain/package.json
+onchain/rust-toolchain.toml
+onchain/.gitignore
+onchain/.prettierignore
+onchain/Cargo.lock
+onchain/programs/onchain/src/lib.rs
+onchain/programs/onchain/tests/test_initialize.rs
+onchain/programs/onchain/Cargo.toml
+onchain/tsconfig.json
+onchain/yarn.lock
+onchain/Cargo.toml
+onchain/Anchor.toml
+onchain/migrations/deploy.ts
+===== ANCHOR CONFIG =====
+[toolchain]
+package_manager = "yarn"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+onchain = "HuyRx42nkwqRnmZWP1wHiqStyL35shayb6UEzcVU99SR"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "cargo test"
+
+[hooks]
+===== CARGO FILES =====
+[workspace]
+members = [
+    "programs/*"
+]
+resolver = "2"
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+[profile.release.build-override]
+opt-level = 3
+incremental = false
+codegen-units = 1
+===== onchain/programs/onchain/Cargo.toml =====
+[package]
+name = "onchain"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "onchain"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+
+
+[dependencies]
+anchor-lang = "1.0.2"
+
+[dev-dependencies]
+litesvm = "0.10.0"
+solana-message = "3.0.1"
+solana-transaction = "3.0.2"
+solana-signer = "3.0.0"
+solana-keypair = "3.0.1"
+
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
+===== PROGRAM SOURCE =====
+===== onchain/programs/onchain/src/lib.rs =====
+use anchor_lang::prelude::*;
+
+declare_id!("HuyRx42nkwqRnmZWP1wHiqStyL35shayb6UEzcVU99SR");
+
+#[program]
+pub mod onchain {
+    use super::*;
+
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+        msg!("Greetings from: {:?}", ctx.program_id);
+        Ok(())
+    }
+}
+
+#[derive(Accounts)]
+pub struct Initialize {}
+===== WEB PACKAGE =====
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@anchor-lang/core": "^1.2.2",
+    "@solana/spl-token": "^0.4.15",
+    "@solana/web3.js": "^1.99.0",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.119.0",
+    "next": "16.4.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.5",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+===== WEB STRUCTURE =====
+web/src/lib/db/supabase.ts
+web/src/lib/db/supabase-admin.ts
+web/src/app/favicon.ico
+web/src/app/layout.tsx
+web/src/app/page.tsx
+web/src/app/globals.css
+

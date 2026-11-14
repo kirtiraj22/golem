@@ -1,0 +1,151 @@
+GOLEM — PROJECT CONTEXT / HANDOFF DOCUMENT
+===========================================
+
+1. WHAT WE ARE BUILDING
+-----------------------
+Golem is an on-chain, human-powered content evaluation and reward marketplace (hackathon project, Solana Devnet, native SOL only).
+
+Flow:
+ 1. A company connects a Solana wallet and creates a campaign.
+ 2. It uploads images, sets a budget (lamports) and voting rules.
+ 3. It deposits the budget into an on-chain escrow (the Campaign PDA holds native SOL).
+ 4. Participants connect wallets and classify each image as AI_GENERATED or HUMAN_CREATED.
+ 5. One vote per wallet per image (enforced by the Vote PDA).
+ 6. After voting ends, the program computes the majority per image.
+ 7. Voters who matched the majority claim an equal share of that image's reward pool.
+ 8. After the claim deadline the company refunds everything remaining.
+
+IMPORTANT PRODUCT RULE: Golem measures HUMAN CONSENSUS, not verified ground truth. Never present the majority result as objectively verified. There is NO AI model, AI inference or AI detection API anywhere in the system.
+
+2. ARCHITECTURE
+---------------
+A) Solana program (Anchor 1.0.2) = single source of truth for campaigns, escrow, assets (+SHA-256 hashes), votes, vote counts, results, reward eligibility, claims, refunds.
+B) Next.js 16 (App Router) + Supabase = application layer only: descriptions, image storage, profiles, discovery/filtering, cached on-chain data, tx history, analytics. Supabase is NEVER the authority for votes, results, rewards or payouts.
+ - Never trust the frontend for vote counts, results, reward amounts or "tx succeeded" claims. Verify transactions and account state against Solana.
+ - Images are stored in Supabase Storage; only the SHA-256 hash goes on-chain.
+ - All user-authorized transactions are signed by the user's wallet. No server-side private key ever signs for a user.
+ - Server-only privileged DB operations use SUPABASE_SECRET_KEY (never NEXT_PUBLIC_).
+ - Wallet auth = signed challenge (expiry + one-time nonce) -> session token (stored hashed).
+
+3. ENVIRONMENT
+--------------
+Project root: /home/kirtiraj/projects/golem (Ubuntu on WSL)
+Folders: docs/, supabase/migrations/, web/ (Next.js), onchain/ (Anchor)
+Node 22.23.4, npm 10.9.9, Rust 1.97.0 nightly, Solana CLI 3.1.11 (Agave), Anchor CLI 1.0.2, RPC = Devnet.
+onchain/ package manager = yarn. Anchor.toml test script = "cargo test" (Rust LiteSVM tests, not TypeScript).
+Program ID (existing, do not change): HuyRx42nkwqRnmZWP1wHiqStyL35shayb6UEzcVU99SR
+ - Verify with `anchor keys list` that target/deploy/onchain-keypair.json matches; otherwise `anchor keys sync`.
+web/package.json already has: @anchor-lang/core ^1.2.2, @solana/web3.js ^1.99.0, @supabase/ssr, @supabase/supabase-js, next 16.4.5, react 19.3.0, zod ^4.6.7. (@solana/spl-token is unused and can be removed.)
+Existing web files: web/src/lib/db/supabase.ts, web/src/lib/db/supabase-admin.ts, web/src/app/{layout,page}.tsx, globals.css. THEIR CONTENTS HAVE NOT BEEN SEEN YET; paste them before Stage 3 so they are extended, not clobbered.
+web/.env.local currently has NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY. SUPABASE_SECRET_KEY must be added by the owner (never invent values).
+
+4. ON-CHAIN INTERFACE (DELIVERED, STAGE 1)
+------------------------------------------
+Files in onchain/programs/onchain/src/: lib.rs, errors.rs, state.rs, events.rs, instructions/{create_campaign,register_asset,fund_campaign,cast_vote,close_campaign,finalize_asset,claim_reward,refund_campaign,mod}.rs
+Test file: onchain/programs/onchain/tests/golem.rs (the scaffold's test_initialize.rs must be deleted).
+Anchor.toml: only change is an added [programs.devnet] entry.
+
+PDA seeds (all u64/u32 as little-endian bytes):
+ Campaign: ["campaign", company_pubkey, campaign_id u64 LE]
+ Asset:    ["asset", campaign_pubkey, asset_index u32 LE]
+ Vote:     ["vote", asset_pubkey, participant_pubkey]
+
+Instructions (IDL names, args in order):
+ create_campaign(campaign_id u64, expected_asset_count u32, total_budget u64, min_votes u64, voting_deadline i64, claim_deadline i64)
+   accounts: company(signer, mut), campaign(init PDA), system_program
+ register_asset(asset_index u32, content_hash [u8;32])
+   accounts: company(signer, mut), campaign(mut), asset(init PDA), system_program
+ fund_campaign()
+   accounts: company(signer, mut), campaign(mut), system_program
+ vote(classification)   [Rust struct CastVote; IDL instruction is "vote"]
+   accounts: participant(signer, mut), campaign, asset(mut), vote(init PDA), system_program
+ close_campaign()
+   accounts: caller(signer), campaign(mut)
+ finalize_asset()
+   accounts: campaign(mut), asset(mut)   [permissionless, no signer]
+ claim_reward()
+   accounts: participant(signer, mut), campaign(mut), asset(mut), vote(mut)
+ refund_campaign()
+   accounts: company(signer, mut), campaign(mut)
+
+Account layouts (Anchor, 8-byte discriminator):
+ Campaign: company Pubkey, campaign_id u64, total_budget u64, expected_asset_count u32, registered_asset_count u32, min_votes u64, voting_deadline i64, claim_deadline i64, status CampaignStatus, finalized_asset_count u32, total_claimed u64, bump u8
+ Asset: campaign Pubkey, asset_index u32, content_hash [u8;32], ai_votes u64, human_votes u64, total_votes u64, result AssetResult, winning_votes u64, reward_pool u64, total_claimed u64, finalized bool, bump u8
+ Vote: asset Pubkey, participant Pubkey, classification Classification, claimed bool, bump u8
+Enums (IDL camelCase objects, e.g. { aiGenerated: {} }):
+ CampaignStatus: Draft | Active | Closed | Settled
+ Classification: AiGenerated | HumanCreated
+ AssetResult: Pending | AiGenerated | HumanCreated | Tie | InsufficientVotes
+Off-chain/DB string mapping: DRAFT/ACTIVE/CLOSED/SETTLED; AI_GENERATED/HUMAN_CREATED; PENDING/AI_GENERATED/HUMAN_CREATED/TIE/INSUFFICIENT_VOTES.
+
+Events: CampaignCreated, AssetRegistered, CampaignFunded, VoteCast, CampaignClosed, AssetFinalized, RewardClaimed, CampaignRefunded.
+Errors (GolemError): InvalidAssetCount, InvalidBudget, InvalidMinVotes, InvalidDeadlines, Unauthorized, InvalidCampaignStatus, AllAssetsRegistered, AssetsNotAllRegistered, InvalidAssetIndex, VotingNotOpen, VotingStillOpen, AssetCampaignMismatch, AssetAlreadyFinalized, AssetNotFinalized, NoRewardAvailable, NotWinningVote, AlreadyClaimed, ClaimWindowClosed, ClaimWindowOpen, AssetsNotFinalized, MathOverflow, InsufficientEscrow.
+
+Key behaviours later stages depend on:
+ - Assets must be registered sequentially: index 0,1,2,... (index must equal registered_asset_count). Max 500 assets per campaign.
+ - Budget must be >= asset count (1 lamport per asset minimum).
+ - Registration is allowed only in DRAFT; funding requires all assets registered and now < voting_deadline; funding transfers exactly total_budget and sets ACTIVE.
+ - Voting only when ACTIVE and now < voting_deadline.
+ - close_campaign: company any time while ACTIVE; anyone once now >= voting_deadline.
+ - finalize_asset is permissionless; if the campaign is ACTIVE and the deadline has passed it also flips the campaign to CLOSED. Result rules: total_votes < min_votes -> InsufficientVotes; ai > human -> AiGenerated; human > ai -> HumanCreated; equal -> Tie.
+ - Reward pool per asset = floor(total_budget / expected_asset_count), set at finalization for AiGenerated/HumanCreated results only (Tie/Insufficient => pool 0, claims rejected).
+ - Per-voter reward = floor(reward_pool / winning_votes). Claims require CLOSED campaign, finalized asset, now <= claim_deadline, winning vote, not already claimed. Escrow rent-exempt minimum is preserved.
+ - refund_campaign: company only, status CLOSED, now > claim_deadline, finalized_asset_count == expected_asset_count; sends all lamports above rent-exempt minimum to the company and sets SETTLED. (Consequence: the company must ensure every asset gets finalized, which anyone can do.)
+ - Participants pay rent for their Vote PDA; company pays rent for Campaign and Asset PDAs.
+
+5. SUPABASE SCHEMA (DELIVERED, STAGE 2)
+---------------------------------------
+Migrations in supabase/migrations/ (apply in this order):
+ 20260101000000_golem_schema.sql  -> profiles, campaign_metadata, asset_metadata, chain_transactions, triggers (updated_at, asset index bound)
+ 20260101000100_golem_auth.sql    -> auth_challenges, wallet_sessions, purge_expired_auth()
+ 20260101000200_golem_rls.sql     -> RLS enabled on all tables, grants, public read policies
+ 20260101000300_golem_storage.sql -> private bucket "campaign-assets" (10 MB limit; jpeg/png/webp) + select policy
+Types: web/src/lib/db/database.types.ts (hand-written Database type; can be replaced later via `supabase gen types typescript`).
+
+Design decisions:
+ - Only the service role (SUPABASE_SECRET_KEY, server-side) can write. anon/authenticated only SELECT, and only rows belonging to campaigns with is_listed = true (profiles are public). auth_challenges and wallet_sessions are completely inaccessible to anon/authenticated.
+ - is_listed must only be set true by the API after verifying on-chain that the campaign is funded/active.
+ - u64 values (campaign_id, lamports, votes) are bigint columns constrained to <= 2^53-1 so they are safe as JS numbers. The client MUST generate campaign_id within 0..2^53-1 (e.g. Date.now()).
+ - campaign_metadata.campaign_pubkey and asset_metadata.asset_pubkey link rows to on-chain accounts. cached_* columns are caches of on-chain state, refreshed by the API from Solana; they are not authoritative.
+ - asset_metadata.asset_index is assigned by the API sequentially per campaign and must equal the on-chain index. Unique (campaign_pubkey, content_hash) prevents duplicate images per campaign.
+ - Storage path convention: <campaign_pubkey>/<sha256hex>.<jpg|png|webp>. Bucket is private; clients get signed URLs; the select policy only exposes objects of listed campaigns. Uploads happen server-side only.
+ - chain_transactions has one row per (signature, instruction_index); only verified successful transactions are inserted.
+ - Challenge consumption must be one atomic statement: UPDATE auth_challenges SET consumed_at = now() WHERE nonce = $1 AND consumed_at IS NULL AND expires_at > now() RETURNING *.
+ - Session tokens: random 32+ bytes, only the SHA-256 hex is stored in wallet_sessions.token_hash.
+
+6. STATUS
+---------
+ [DONE] Stage 1 — Solana program + Rust tests (delivered; NOT yet confirmed compiled/passing by the owner. Run `anchor build` then `cargo test` in onchain/.)
+ [DONE] Stage 2 — Supabase migrations, RLS, storage policy, DB types (delivered; NOT yet applied by the owner).
+ [TODO] Stage 3 — Next.js backend
+ [TODO] Stage 4 — Solana TypeScript client
+
+7. REMAINING WORK
+-----------------
+Stage 3 — Next.js backend (inside web/):
+ - Extra deps probably needed: tweetnacl and bs58 (signature verification). Zod is already installed.
+ - .env.example / env docs: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SECRET_KEY (server only), plus Solana RPC URL and program ID variables (owner supplies the values).
+ - Env validation module, Supabase browser/server/admin clients (reconcile with existing web/src/lib/db/supabase.ts and supabase-admin.ts).
+ - Shared types and Zod schemas.
+ - Wallet auth: POST challenge (issue nonce+message, 5 min expiry), POST verify (ed25519 signature check, atomic nonce consumption, create session, return token), session lookup helper used by privileged routes, logout.
+ - API routes: profiles (get/upsert own), campaigns (list/filter, create metadata after verifying the create_campaign tx and on-chain account, detail), assets (image upload with MIME/size/magic-byte checks and SHA-256 computation, list, signed URLs), transaction verification + indexing (fetch tx from RPC, confirm program ID/instruction/accounts/success, parse events), campaign sync (refresh caches from chain, set is_listed when funded), analytics (campaign and asset stats derived from on-chain accounts), consistent error handling.
+Stage 4 — Solana client (web/src/lib/solana/):
+ - Constants and connection (Devnet), IDL loading (copy onchain/target/idl/onchain.json and onchain/target/types/onchain.ts into web after `anchor build`), Anchor provider/program from a wallet adapter, PDA derivation, account fetch/decode helpers, enum mapping (IDL camelCase <-> DB/API UPPER_SNAKE strings), transaction builders for all 8 instructions (wallet signs; no server keys), shared types.
+Other:
+ - Deploy to Devnet: `anchor deploy --provider.cluster devnet`.
+ - A wallet-connect UI and pages are outside this backend scope.
+
+8. DELIVERY CONVENTIONS USED WITH THE ASSISTANT
+-----------------------------------------------
+ - Each file is delivered as "FILE: relative/path" followed by a fenced code block with complete contents.
+ - No comments inside generated code; no pseudocode or TODOs.
+ - Stages end with a file list and local validation commands.
+ - If a reply hits its limit, the assistant prints "NEXT FILE TO GENERATE: path" and the owner replies CONTINUE.
+ - The assistant does not execute commands; the owner runs them locally.
+
+9. COMMANDS TO VALIDATE LOCALLY
+-------------------------------
+ cd /home/kirtiraj/projects/golem/onchain && rm -f programs/onchain/tests/test_initialize.rs && anchor build && cargo test
+ cd /home/kirtiraj/projects/golem && npx supabase link --project-ref <your-project-ref> && npx supabase db push
+   (alternative: run the four SQL files in order in the Supabase dashboard SQL editor)
+ cd /home/kirtiraj/projects/golem/web && npx tsc --noEmit
