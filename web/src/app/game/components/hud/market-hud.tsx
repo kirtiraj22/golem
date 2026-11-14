@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import React, { useState } from "react";
 import { Alert, Button, Modal, NumberInput, Select } from "@mantine/core";
 import { useEconomy } from "../../contexts/economy-context";
+import { useMarketUi } from "../../contexts/market-ui-context";
 import type {
   GoodDefinition,
   GoodId,
@@ -35,7 +36,7 @@ const roleLabels: Record<MerchantState["role"], string> = {
 const pixelLabelStyle: React.CSSProperties = {
   color: INK,
   fontFamily: pixelFont.style.fontFamily,
-  fontSize: 10,
+  fontSize: 11,
   fontWeight: 700,
   letterSpacing: "0.12em",
   lineHeight: 1.5,
@@ -88,12 +89,15 @@ function pixelButtonStyle(background: string): React.CSSProperties {
     boxShadow: `3px 3px 0 ${INK}`,
     color: INK,
     fontFamily: pixelFont.style.fontFamily,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 700,
     height: "auto",
     letterSpacing: "0.06em",
-    minHeight: 36,
-    padding: "7px 12px",
+    lineHeight: 1.35,
+    minHeight: 38,
+    padding: "8px 12px",
+    textAlign: "center",
+    whiteSpace: "normal",
   };
 }
 
@@ -150,6 +154,7 @@ function PixelPanel({
 const MarketHud = () => {
   const {
     snapshot,
+    clock,
     error,
     clearError,
     endDay,
@@ -159,16 +164,23 @@ const MarketHud = () => {
     startRumour,
   } = useEconomy();
 
-  const [isOpen, setIsOpen] = useState(false);
+  const {
+    isOpen,
+    selectedMerchantId,
+    openMarket,
+    closeMarket,
+    selectMerchant,
+  } = useMarketUi();
+
   const [goodId, setGoodId] = useState<GoodId>("GRAIN");
-  const [merchantId, setMerchantId] = useState("farmer");
   const [quantity, setQuantity] = useState<number | string>(1);
 
   const selectedGood =
     snapshot.goods.find((good) => good.id === goodId) ?? snapshot.goods[0];
   const selectedMerchant =
-    snapshot.merchants.find((merchant) => merchant.id === merchantId) ??
+    snapshot.merchants.find((merchant) => merchant.id === selectedMerchantId) ??
     snapshot.merchants[0];
+  const merchantId = selectedMerchant.id;
 
   const grainRumourActive = snapshot.activeEvents.some(
     (event) => event.goodId === "GRAIN"
@@ -276,14 +288,14 @@ const MarketHud = () => {
       return;
     }
 
-    setMerchantId(value);
+    selectMerchant(value);
     clearError();
   };
 
   return (
     <>
       <Button
-        onClick={() => setIsOpen(true)}
+        onClick={() => openMarket()}
         style={{
           ...pixelButtonStyle(GOLD),
           bottom: 16,
@@ -297,7 +309,7 @@ const MarketHud = () => {
 
       <Modal
         opened={isOpen}
-        onClose={() => setIsOpen(false)}
+        onClose={closeMarket}
         title="MARKET ROW"
         size="xl"
         centered
@@ -322,34 +334,35 @@ const MarketHud = () => {
           className="market-hud p-3 text-[#2b1a08]"
           style={{
             fontFamily: pixelFont.style.fontFamily,
-            letterSpacing: "0.04em",
+            letterSpacing: "0.02em",
+            lineHeight: 1.45,
           }}
         >
           <PixelPanel className="!bg-[#f8ecc2]">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-[#7a5b35]">
+                <p className="text-[11px] uppercase tracking-widest text-[#4a3118]">
                   {snapshot.player.stall.town}
                 </p>
                 <p className="text-2xl font-bold uppercase">
-                  Day {snapshot.day}
+                  Day {snapshot.day} · {clock.timeLabel}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-[#7a5b35]">
+                <p className="text-[11px] uppercase tracking-widest text-[#4a3118]">
                   Stall
                 </p>
-                <p className="text-sm font-bold">
+                <p className="text-base font-bold">
                   {snapshot.player.stall.name}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] uppercase tracking-widest text-[#7a5b35]">
+                <p className="text-[11px] uppercase tracking-widest text-[#4a3118]">
                   Purse
                 </p>
                 <p className="text-2xl font-bold">
                   {snapshot.player.balance}{" "}
-                  <span className="text-[10px] uppercase">coins</span>
+                  <span className="text-[11px] uppercase">coins</span>
                 </p>
               </div>
             </div>
@@ -393,7 +406,7 @@ const MarketHud = () => {
               {snapshot.activeEvents.map((event) => (
                 <span
                   key={event.id}
-                  className="border-2 border-[#2b1a08] bg-[#ffcf70] px-2 py-1 text-[10px] font-bold uppercase shadow-[2px_2px_0_#2b1a08]"
+                  className="border-2 border-[#2b1a08] bg-[#ffcf70] px-2 py-1 text-[11px] font-bold uppercase shadow-[2px_2px_0_#2b1a08]"
                 >
                   {event.goodId} demand ×{event.demandMultiplier.toFixed(2)} ·{" "}
                   {event.remainingDays} day
@@ -406,7 +419,7 @@ const MarketHud = () => {
           <div className="mt-4">
             <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
               <h2 className="text-lg font-bold uppercase">Goods</h2>
-              <p className="text-[10px] uppercase text-[#7a5b35]">
+              <p className="text-[11px] uppercase text-[#4a3118]">
                 Prices react to stock and demand
               </p>
             </div>
@@ -429,20 +442,20 @@ const MarketHud = () => {
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className="text-sm font-bold uppercase">
+                      <span className="text-base font-bold uppercase">
                         {good.name}
                       </span>
                       {demand > 1 && (
-                        <span className="border-2 border-[#2b1a08] bg-[#ffcf70] px-1 text-[9px] font-bold uppercase">
+                        <span className="border-2 border-[#2b1a08] bg-[#ffcf70] px-1.5 py-0.5 text-[10px] font-bold uppercase">
                           ×{demand.toFixed(2)}
                         </span>
                       )}
                     </div>
                     <p className="mt-2 text-2xl font-bold">
                       {snapshot.prices[good.id]}{" "}
-                      <span className="text-[10px] uppercase">coins</span>
+                      <span className="text-[11px] uppercase">coins</span>
                     </p>
-                    <div className="mt-1 space-y-0.5 text-[10px] uppercase text-[#5f4426]">
+                    <div className="mt-2 space-y-1 text-[11px] font-medium uppercase leading-snug text-[#4a3118]">
                       <p>Market stock {snapshot.marketStock[good.id]}</p>
                       <p>Your stock {snapshot.player.inventory[good.id]}</p>
                     </div>
@@ -473,23 +486,23 @@ const MarketHud = () => {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-sm font-bold">{merchant.name}</p>
-                        <p className="text-[9px] uppercase tracking-widest text-[#5f4426]">
+                        <p className="text-base font-bold">{merchant.name}</p>
+                        <p className="text-[10px] uppercase tracking-widest text-[#4a3118]">
                           {roleLabels[merchant.role]}
                         </p>
                       </div>
-                      <span className="border-2 border-[#2b1a08] bg-[#fff6d6] px-1 text-[9px] font-bold uppercase">
+                      <span className="border-2 border-[#2b1a08] bg-[#fff6d6] px-1.5 py-0.5 text-[10px] font-bold uppercase">
                         {isSelected ? "Selected" : "Choose"}
                       </span>
                     </div>
-                    <p className="mt-2 text-[11px] font-bold">
+                    <p className="mt-2 text-[12px] font-bold">
                       Purse {merchant.balance} coins
                     </p>
-                    <p className="mt-1 text-[10px] text-[#5f4426]">
+                    <p className="mt-1 break-words text-[11px] leading-snug text-[#4a3118]">
                       Stock{" "}
                       {formatInventory(merchant.inventory, snapshot.goods)}
                     </p>
-                    <p className="text-[10px] text-[#5f4426]">
+                    <p className="break-words text-[11px] leading-snug text-[#4a3118]">
                       Targets {formatTargets(merchant, snapshot.goods)}
                     </p>
                   </button>
@@ -501,7 +514,7 @@ const MarketHud = () => {
           <PixelPanel className="mt-4">
             <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
               <h2 className="text-lg font-bold uppercase">Trade desk</h2>
-              <p className="text-[10px] uppercase text-[#7a5b35]">
+              <p className="text-[11px] uppercase text-[#4a3118]">
                 Choose one good and one merchant
               </p>
             </div>
@@ -559,32 +572,32 @@ const MarketHud = () => {
               <div className="border-4 border-[#2b1a08] bg-[#dff3d2] p-3 shadow-[3px_3px_0_#2b1a08]">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-lg font-bold uppercase">Buy</h3>
-                  <span className="border-2 border-[#2b1a08] bg-[#fff6d6] px-2 py-0.5 text-[9px] font-bold uppercase">
+                  <span className="border-2 border-[#2b1a08] bg-[#fff6d6] px-2 py-0.5 text-[10px] font-bold uppercase">
                     Merchant → You
                   </span>
                 </div>
 
-                <p className="mt-2 text-[11px] font-bold">
+                <p className="mt-2 text-[12px] font-bold">
                   From {selectedMerchant.name}
                 </p>
 
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <div className="border-2 border-[#2b1a08] bg-[#fffdf0] p-2">
-                    <p className="text-[9px] uppercase text-[#5f4426]">
+                    <p className="text-[10px] uppercase text-[#4a3118]">
                       Stock for sale
                     </p>
                     <p className="text-xl font-bold">{buyStock}</p>
                   </div>
                   <div className="border-2 border-[#2b1a08] bg-[#fffdf0] p-2">
                     <div className="flex items-center justify-between gap-1">
-                      <p className="text-[9px] uppercase text-[#5f4426]">
+                      <p className="text-[10px] uppercase text-[#4a3118]">
                         Max you can buy
                       </p>
                       <button
                         type="button"
                         disabled={maxBuy < 1}
                         onClick={() => setQuantity(maxBuy)}
-                        className="border-2 border-[#2b1a08] bg-[#f4c95d] px-1 text-[9px] font-bold uppercase shadow-[2px_2px_0_#2b1a08] disabled:opacity-40"
+                        className="border-2 border-[#2b1a08] bg-[#f4c95d] px-1.5 py-0.5 text-[10px] font-bold uppercase shadow-[2px_2px_0_#2b1a08] disabled:cursor-not-allowed disabled:bg-[#d8cdb5] disabled:text-[#4a3118] disabled:opacity-100 disabled:shadow-[2px_2px_0_#6d5a44]"
                       >
                         Max
                       </button>
@@ -593,7 +606,7 @@ const MarketHud = () => {
                   </div>
                 </div>
 
-                <p className="mt-2 text-[10px] uppercase text-[#5f4426]">
+                <p className="mt-2 text-[11px] uppercase text-[#4a3118]">
                   Price {unitPrice} coins each
                   {tradeQuantity > 0 ? ` · Cost ${buyCost} coins` : ""}
                 </p>
@@ -613,7 +626,7 @@ const MarketHud = () => {
                 </Button>
 
                 {buyExplanation && (
-                  <p className="mt-2 border-2 border-[#2b1a08] bg-[#fff6d6] p-2 text-[10px] leading-relaxed">
+                  <p className="mt-2 border-2 border-[#2b1a08] bg-[#fff6d6] p-2 text-[11px] leading-relaxed">
                     {buyExplanation}
                   </p>
                 )}
@@ -622,32 +635,32 @@ const MarketHud = () => {
               <div className="border-4 border-[#2b1a08] bg-[#f9e3b0] p-3 shadow-[3px_3px_0_#2b1a08]">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-lg font-bold uppercase">Sell</h3>
-                  <span className="border-2 border-[#2b1a08] bg-[#fff6d6] px-2 py-0.5 text-[9px] font-bold uppercase">
+                  <span className="border-2 border-[#2b1a08] bg-[#fff6d6] px-2 py-0.5 text-[10px] font-bold uppercase">
                     You → Merchant
                   </span>
                 </div>
 
-                <p className="mt-2 text-[11px] font-bold">
+                <p className="mt-2 text-[12px] font-bold">
                   To {selectedMerchant.name}
                 </p>
 
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <div className="border-2 border-[#2b1a08] bg-[#fffdf0] p-2">
-                    <p className="text-[9px] uppercase text-[#5f4426]">
+                    <p className="text-[10px] uppercase text-[#4a3118]">
                       Remaining demand
                     </p>
                     <p className="text-xl font-bold">{sellDemand}</p>
                   </div>
                   <div className="border-2 border-[#2b1a08] bg-[#fffdf0] p-2">
                     <div className="flex items-center justify-between gap-1">
-                      <p className="text-[9px] uppercase text-[#5f4426]">
+                      <p className="text-[10px] uppercase text-[#4a3118]">
                         Max you can sell
                       </p>
                       <button
                         type="button"
                         disabled={maxSell < 1}
                         onClick={() => setQuantity(maxSell)}
-                        className="border-2 border-[#2b1a08] bg-[#f4c95d] px-1 text-[9px] font-bold uppercase shadow-[2px_2px_0_#2b1a08] disabled:opacity-40"
+                        className="border-2 border-[#2b1a08] bg-[#f4c95d] px-1.5 py-0.5 text-[10px] font-bold uppercase shadow-[2px_2px_0_#2b1a08] disabled:cursor-not-allowed disabled:bg-[#d8cdb5] disabled:text-[#4a3118] disabled:opacity-100 disabled:shadow-[2px_2px_0_#6d5a44]"
                       >
                         Max
                       </button>
@@ -656,7 +669,7 @@ const MarketHud = () => {
                   </div>
                 </div>
 
-                <p className="mt-2 text-[10px] uppercase text-[#5f4426]">
+                <p className="mt-2 text-[11px] uppercase text-[#4a3118]">
                   Price {unitPrice} coins each
                   {tradeQuantity > 0 ? ` · Earn ${sellRevenue} coins` : ""}
                 </p>
@@ -676,14 +689,14 @@ const MarketHud = () => {
                 </Button>
 
                 {sellExplanation && (
-                  <p className="mt-2 border-2 border-[#2b1a08] bg-[#fff6d6] p-2 text-[10px] leading-relaxed">
+                  <p className="mt-2 border-2 border-[#2b1a08] bg-[#fff6d6] p-2 text-[11px] leading-relaxed">
                     {sellExplanation}
                   </p>
                 )}
               </div>
             </div>
 
-            <p className="mt-3 border-t-2 border-[#8b6b3f] pt-2 text-[10px] uppercase text-[#5f4426]">
+            <p className="mt-3 border-t-2 border-[#8b6b3f] pt-2 text-[11px] uppercase text-[#4a3118]">
               Buy moves goods from the merchant to you. Sell moves goods from
               you to the merchant.
             </p>
@@ -692,8 +705,8 @@ const MarketHud = () => {
           <PixelPanel className="mt-4">
             <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
               <h2 className="text-lg font-bold uppercase">Economy</h2>
-              <p className="text-[10px] uppercase text-[#7a5b35]">
-                Manual day advancement
+              <p className="text-[11px] uppercase text-[#4a3118]">
+                Automatic market days · manual controls
               </p>
             </div>
 
@@ -727,17 +740,17 @@ const MarketHud = () => {
           <PixelPanel className="mt-4">
             <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
               <h2 className="text-lg font-bold uppercase">Latest trades</h2>
-              <p className="text-[10px] uppercase text-[#7a5b35]">
+              <p className="text-[11px] uppercase text-[#4a3118]">
                 Most recent 10
               </p>
             </div>
 
             {latestTrades.length === 0 ? (
-              <p className="border-2 border-[#8b6b3f] bg-[#fffdf0] p-3 text-[11px]">
+              <p className="border-2 border-[#8b6b3f] bg-[#fffdf0] p-3 text-[12px] leading-relaxed">
                 No trades yet. Advance a day to let the merchants trade.
               </p>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {latestTrades.map((trade) => {
                   const involvesPlayer =
                     trade.buyerId === "player" || trade.sellerId === "player";
@@ -745,27 +758,27 @@ const MarketHud = () => {
                   return (
                     <div
                       key={trade.id}
-                      className="border-2 border-[#8b6b3f] bg-[#fffdf0] px-2 py-1.5 text-[10px]"
+                      className="break-words border-2 border-[#8b6b3f] bg-[#fffdf0] px-3 py-2 text-[12px] leading-relaxed"
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                         <div className="flex items-center gap-2">
                           <span
-                            className={`border-2 border-[#2b1a08] px-1 text-[9px] font-bold uppercase ${
+                            className={`border-2 border-[#2b1a08] px-1.5 py-0.5 text-[10px] font-bold uppercase ${
                               involvesPlayer ? "bg-[#f4c95d]" : "bg-[#d9d0c0]"
                             }`}
                           >
                             {involvesPlayer ? "Player" : "NPC"}
                           </span>
-                          <span className="uppercase text-[#5f4426]">
+                          <span className="text-[11px] uppercase text-[#4a3118]">
                             Day {trade.day} · {trade.timestamp.slice(11, 16)}
                           </span>
                         </div>
-                        <span className="font-bold">
+                        <span className="font-bold tabular-nums">
                           {trade.quantity} × {goodName(trade.goodId)} @{" "}
                           {trade.unitPrice} = {trade.totalPrice} coins
                         </span>
                       </div>
-                      <p className="mt-0.5 text-[#5f4426]">
+                      <p className="mt-1 text-[11px] leading-snug text-[#4a3118]">
                         {actorName(trade.buyerId)} bought from{" "}
                         {actorName(trade.sellerId)}
                       </p>
