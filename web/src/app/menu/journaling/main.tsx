@@ -1,4 +1,11 @@
 "use client";
+
+/**
+ * LEGACY: Old journal/distortion entry flow.
+ *
+ * Preserved for reference only. The /menu/journaling route redirects to the
+ * Copper Stall title screen and is not part of the active startup flow.
+ */
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import distortionEntry from "~/app/game/classes/distortion-entry";

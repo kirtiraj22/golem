@@ -135,3 +135,13 @@ export const TILES = {
   CIABATTA_TELEPORT: "20x4",
   CIABATTA_BLAST: "6x3",
 };
+
+export const NEW_TILES = {
+  HOME_TOP_LEFT: "1x2",
+  HOME_TOP_MIDDLE: "2x1",
+  HOME_TOP_RIGHT: "3x1",
+  HOME_BOTTOM_LEFT: "1x4",
+  HOME_BOTTOM_MIDDLE: "2x4",
+  HOME_BOTTOM_RIGHT: "3x4",
+};
+
