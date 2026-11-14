@@ -4,6 +4,7 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -22,8 +23,16 @@ import type {
   WorldSnapshot,
 } from "../simulation/types";
 
+export type GameClock = {
+  dayProgress: number;
+  minutes: number;
+  timeLabel: string;
+  msUntilDayEnd: number;
+};
+
 type EconomyContextValue = {
   snapshot: WorldSnapshot;
+  clock: GameClock;
   error: string | null;
   clearError: () => void;
   endDay: () => void;
@@ -34,6 +43,31 @@ type EconomyContextValue = {
 };
 
 const EconomyContext = createContext<EconomyContextValue | null>(null);
+
+// A full market day runs from 06:00 to 22:00. Sixty seconds keeps the world
+// visibly alive without turning every routine into a blur.
+const DAY_LENGTH_MS = 60_000;
+const CLOCK_UPDATE_INTERVAL_MS = 500;
+const DAY_START_MINUTES = 6 * 60;
+const DAY_END_MINUTES = 22 * 60;
+
+function createClock(dayProgress: number): GameClock {
+  const progress = Math.min(Math.max(dayProgress, 0), 0.9999);
+  const totalMinutes =
+    DAY_START_MINUTES + progress * (DAY_END_MINUTES - DAY_START_MINUTES);
+  const minutes = Math.floor(totalMinutes);
+  const hours = Math.floor(minutes / 60);
+  const minuteOfHour = Math.floor(minutes % 60);
+
+  return {
+    dayProgress: progress,
+    minutes,
+    timeLabel: `${String(hours).padStart(2, "0")}:${String(
+      minuteOfHour
+    ).padStart(2, "0")}`,
+    msUntilDayEnd: Math.max(0, Math.round((1 - progress) * DAY_LENGTH_MS)),
+  };
+}
 
 export const EconomyProvider = ({
   children,
@@ -50,6 +84,8 @@ export const EconomyProvider = ({
   const [snapshot, setSnapshot] = useState<WorldSnapshot>(() =>
     getSnapshot(worldRef.current as SimulationState)
   );
+  const [clock, setClock] = useState<GameClock>(() => createClock(0));
+  const dayProgressRef = useRef(0);
   const [error, setError] = useState<string | null>(null);
 
   const clearError = useCallback(() => {
@@ -77,13 +113,49 @@ export const EconomyProvider = ({
     }
   }, []);
 
-  const endDay = useCallback(() => {
+  const resetClock = useCallback(() => {
+    dayProgressRef.current = 0;
+    setClock(createClock(0));
+  }, []);
+
+  const advanceSimulationDay = useCallback(() => {
     runAction(() => tick(worldRef.current as SimulationState));
-  }, [runAction]);
+    resetClock();
+  }, [resetClock, runAction]);
+
+  const endDay = advanceSimulationDay;
+
+  useEffect(() => {
+    let previousUpdate = performance.now();
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== "visible") {
+        previousUpdate = performance.now();
+        return;
+      }
+
+      const now = performance.now();
+      const elapsedMs = now - previousUpdate;
+      previousUpdate = now;
+
+      const nextProgress = dayProgressRef.current + elapsedMs / DAY_LENGTH_MS;
+
+      if (nextProgress >= 1) {
+        advanceSimulationDay();
+        return;
+      }
+
+      dayProgressRef.current = nextProgress;
+      setClock(createClock(nextProgress));
+    }, CLOCK_UPDATE_INTERVAL_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, [advanceSimulationDay]);
 
   const fastForwardWeek = useCallback(() => {
     runAction(() => fastForwardSevenDays(worldRef.current as SimulationState));
-  }, [runAction]);
+    resetClock();
+  }, [resetClock, runAction]);
 
   const buy = useCallback(
     (goodId: GoodId, quantity: number, sellerId?: string) => {
@@ -124,6 +196,7 @@ export const EconomyProvider = ({
     <EconomyContext.Provider
       value={{
         snapshot,
+        clock,
         error,
         clearError,
         endDay,

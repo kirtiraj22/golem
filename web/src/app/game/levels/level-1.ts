@@ -23,6 +23,8 @@ import {
   PLACEMENT_TYPE_WATER_PICKUP,
 } from "~/constants/helpers";
 
+import { NEW_TILES } from "~/constants/tiles"
+
 const level1 = {
   theme: LevelThemes.Blue,
   tilesWidth: 12,
