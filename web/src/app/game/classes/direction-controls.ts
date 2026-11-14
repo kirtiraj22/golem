@@ -11,9 +11,10 @@ export class DirectionControls {
     d: Direction;
     s: Direction;
   };
-  heldDirections: never[];
-  directionKeyDownHandler: (event: any) => void;
-  directionKeyUpHandler: (event: any) => void;
+  heldDirections: Direction[];
+  directionKeyDownHandler: (event: KeyboardEvent) => void;
+  directionKeyUpHandler: (event: KeyboardEvent) => void;
+  enabled: boolean;
   constructor() {
     this.directionKeys = {
       ArrowUp: Direction.Top,
@@ -26,8 +27,20 @@ export class DirectionControls {
       s: Direction.Bottom,
     };
     this.heldDirections = [];
+    this.enabled = true;
     this.directionKeyDownHandler = (event) => {
-      const direction = this.directionKeys[event.key];
+      if (
+        !this.enabled ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        this.isTypingTarget(event.target)
+      ) {
+        return;
+      }
+
+      const direction =
+        this.directionKeys[event.key as keyof typeof this.directionKeys];
 
       if (direction && this.heldDirections.indexOf(direction) === -1) {
         this.heldDirections.unshift(direction);
@@ -35,7 +48,13 @@ export class DirectionControls {
     };
 
     this.directionKeyUpHandler = (event) => {
-      const direction = this.directionKeys[event.key];
+      const direction =
+        this.directionKeys[event.key as keyof typeof this.directionKeys];
+
+      if (!direction) {
+        return;
+      }
+
       const index = this.heldDirections.indexOf(direction);
 
       if (index > -1) {
@@ -45,6 +64,29 @@ export class DirectionControls {
 
     document.addEventListener("keydown", this.directionKeyDownHandler);
     document.addEventListener("keyup", this.directionKeyUpHandler);
+  }
+
+  isTypingTarget(target: EventTarget | null): boolean {
+    const element = target as HTMLElement | null;
+
+    if (!element) {
+      return false;
+    }
+
+    return (
+      element.tagName === "INPUT" ||
+      element.tagName === "TEXTAREA" ||
+      element.tagName === "SELECT" ||
+      element.isContentEditable
+    );
+  }
+
+  setEnabled(enabled: boolean) {
+    this.enabled = enabled;
+
+    if (!enabled) {
+      this.heldDirections = [];
+    }
   }
 
   get direction() {

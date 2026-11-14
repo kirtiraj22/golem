@@ -34,6 +34,7 @@ class HeroPlacement extends BodyPlacement {
   canCompleteLevel: boolean;
   interactWithGround: boolean;
   canStartBattle: boolean;
+  facingDirection: Direction;
   stats: {
     name: string;
     health: number;
@@ -46,6 +47,7 @@ class HeroPlacement extends BodyPlacement {
     this.canStartBattle = true;
     this.canCompleteLevel = true;
     this.interactWithGround = true;
+    this.facingDirection = Direction.Left;
 
     this.stats = !!progressEntry.get().stats
       ? progressEntry.get().stats
@@ -60,6 +62,9 @@ class HeroPlacement extends BodyPlacement {
     if (this.movingPixelsRemaining > 0) {
       return;
     }
+
+    this.facingDirection = direction;
+    this.updateFacingDirection(direction);
 
     /**
      * Start Battle Scene

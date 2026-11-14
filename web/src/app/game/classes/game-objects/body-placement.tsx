@@ -43,12 +43,9 @@ export class BodyPlacement extends Placement {
     return Boolean(collision.withSolidPlacement());
   }
 
-  updateFacingDirection() {
-    if (
-      this.movingPixelDirection === Direction.Left ||
-      this.movingPixelDirection === Direction.Right
-    ) {
-      this.spriteFacingDirection = this.movingPixelDirection;
+  updateFacingDirection(direction: Direction = this.movingPixelDirection) {
+    if (direction === Direction.Left || direction === Direction.Right) {
+      this.spriteFacingDirection = direction;
     }
   }
 

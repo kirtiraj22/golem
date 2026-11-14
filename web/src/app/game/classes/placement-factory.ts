@@ -11,6 +11,8 @@ import {
   PLACEMENT_TYPE_ICE,
   PLACEMENT_TYPE_ICE_PICKUP,
   PLACEMENT_TYPE_INFECTED_HERO,
+  PLACEMENT_TYPE_MERCHANT,
+  PLACEMENT_TYPE_PROP,
   PLACEMENT_TYPE_KEY,
   PLACEMENT_TYPE_LOCK,
   PLACEMENT_TYPE_ROAMING_ENEMY,
@@ -44,6 +46,8 @@ import { DoorSwitchPlacement } from "./game-objects/door-switch-placement";
 import { TeleportPlacement } from "./game-objects/teleport-placement";
 import { ThiefPlacement } from "./game-objects/thief-placement";
 import { InfectedHeroPlacement } from "./game-objects/infected-hero-placement";
+import { MerchantPlacement } from "./game-objects/merchant-placement";
+import { PropPlacement } from "./game-objects/prop-placement";
 
 const placementTypeClassMap = {
   [PLACEMENT_TYPE_HERO]: HeroPlacement,
@@ -68,6 +72,8 @@ const placementTypeClassMap = {
   [PLACEMENT_TYPE_TELEPORT]: TeleportPlacement,
   [PLACEMENT_TYPE_THIEF]: ThiefPlacement,
   [PLACEMENT_TYPE_INFECTED_HERO]: InfectedHeroPlacement,
+  [PLACEMENT_TYPE_MERCHANT]: MerchantPlacement,
+  [PLACEMENT_TYPE_PROP]: PropPlacement,
 };
 
 class PlacementFactory {

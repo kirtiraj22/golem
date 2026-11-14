@@ -2,6 +2,7 @@ import { LOCK_KEY_COLORS } from "~/constants/helpers";
 import Placement from "../placement";
 import ElevatedSprite from "../../components/object-graphics/elevated-sprite";
 import { TILES } from "~/constants/tiles";
+import { NEW_TILES } from "~/constants/tiles";
 
 export class KeyPlacement extends Placement {
   color: any;
