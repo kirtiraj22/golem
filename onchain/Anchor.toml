@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-onchain = "HuyRx42nkwqRnmZWP1wHiqStyL35shayb6UEzcVU99SR"
+stock_wars = "GZNyBfvyMZZ67cXugKMz9uagcv2fsWP3F64ZhdAQPEiV"
 
 [provider]
 cluster = "localnet"
