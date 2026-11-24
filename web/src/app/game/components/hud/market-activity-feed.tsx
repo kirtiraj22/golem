@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useEconomy } from "../../contexts/economy-context";
+import { useAuction } from "../../contexts/auction-context";
 import type { GoodId, TradeLogEntry } from "../../simulation/types";
 
 const INK = "#2b1a08";
@@ -30,7 +30,12 @@ const feedStyle: React.CSSProperties = {
 };
 
 const MarketActivityFeed = () => {
-  const { snapshot } = useEconomy();
+  const { economy } = useAuction();
+  const snapshot = economy;
+
+  if (!snapshot) {
+    return null;
+  }
 
   const latestTrades = snapshot.history
     .filter((entry): entry is TradeLogEntry => entry.type === "TRADE")

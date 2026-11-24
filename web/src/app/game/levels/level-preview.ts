@@ -1,5 +1,6 @@
 import {
   LevelThemes,
+  PLACEMENT_TYPE_AUCTIONEER,
   PLACEMENT_TYPE_HERO,
   PLACEMENT_TYPE_MERCHANT,
   PLACEMENT_TYPE_PROP,
@@ -209,6 +210,13 @@ const marketProps = [
 
 const pondCollision = solidCells(23, 15, 4, 4);
 
+const auctioneer = {
+  type: PLACEMENT_TYPE_AUCTIONEER,
+  x: 16,
+  y: 10,
+  name: "Rook",
+};
+
 const merchants = [
   {
     type: PLACEMENT_TYPE_MERCHANT,
@@ -262,6 +270,7 @@ const levelPreview = {
       x: 15,
       y: 12,
     },
+    auctioneer,
     ...merchants,
     ...building(7, 7, sprite(BUILDING_SRC, 29, 9, 88, 103), 5, 2),
     ...building(24, 7, sprite(BUILDING_SRC, 16, 128, 157, 112), 9, 2),

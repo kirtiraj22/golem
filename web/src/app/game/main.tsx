@@ -3,8 +3,10 @@ import React, { createContext, useEffect, useState } from "react";
 import { SPRITESHEET_IMAGE_SRC } from "~/constants/helpers";
 import RenderLevel from "./components/level-layout/render-level";
 import MarketHud from "./components/hud/market-hud";
-import { EconomyProvider } from "./contexts/economy-context";
+import AuctionHud from "./components/hud/auction-hud";
+import { AuctionProvider, type AuctionProfile } from "./contexts/auction-context";
 import { MarketUiProvider } from "./contexts/market-ui-context";
+import { WorldClockProvider } from "./contexts/world-clock-context";
 import soundManager from "./classes/sounds";
 
 interface SpriteSheetImage {
@@ -48,20 +50,28 @@ const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 type GameProps = {
   levelConfig?: any;
   showLegacyHud?: boolean;
+  playerProfile: AuctionProfile;
 };
 
-const Game = ({ levelConfig, showLegacyHud = false }: GameProps = {}) => {
+const Game = ({
+  levelConfig,
+  showLegacyHud = false,
+  playerProfile,
+}: GameProps) => {
   return (
     <GameProvider>
-      <EconomyProvider>
-        <MarketUiProvider>
-          <RenderLevel
-            levelConfig={levelConfig}
-            showLegacyHud={showLegacyHud}
-          />
-          <MarketHud />
-        </MarketUiProvider>
-      </EconomyProvider>
+      <AuctionProvider profile={playerProfile}>
+        <WorldClockProvider>
+          <MarketUiProvider>
+            <RenderLevel
+              levelConfig={levelConfig}
+              showLegacyHud={showLegacyHud}
+            />
+            <MarketHud />
+            {!showLegacyHud && <AuctionHud />}
+          </MarketUiProvider>
+        </WorldClockProvider>
+      </AuctionProvider>
     </GameProvider>
   );
 };

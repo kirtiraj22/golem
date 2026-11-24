@@ -1,5 +1,6 @@
 import {
   LevelThemes,
+  PLACEMENT_TYPE_AUCTIONEER,
   PLACEMENT_TYPE_FLOUR,
   PLACEMENT_TYPE_GOAL,
   PLACEMENT_TYPE_HERO,
@@ -78,6 +79,7 @@ interface LevelStateData {
 class LevelState {
   onEmit: (data: any) => void;
   onMerchantInteract: ((merchantId: string) => void) | undefined;
+  onAuctionInteract: (() => void) | undefined;
   directionsControls: DirectionControls;
   interactionKeyDownHandler: (event: KeyboardEvent) => void;
   inputEnabled: boolean;
@@ -108,10 +110,12 @@ class LevelState {
   constructor(
     onEmit: (data: any) => void,
     levelConfig: any = level1,
-    onMerchantInteract?: (merchantId: string) => void
+    onMerchantInteract?: (merchantId: string) => void,
+    onAuctionInteract?: () => void
   ) {
     this.onEmit = onEmit;
     this.onMerchantInteract = onMerchantInteract;
+    this.onAuctionInteract = onAuctionInteract;
     this.levelConfig = levelConfig;
     this.inputEnabled = true;
     this.directionsControls = new DirectionControls();
@@ -464,6 +468,18 @@ class LevelState {
       directionUpdateMap[direction as keyof typeof directionUpdateMap];
 
     if (!delta) {
+      return;
+    }
+
+    const auctioneer = this.placements?.find(
+      (placement) =>
+        placement.type === PLACEMENT_TYPE_AUCTIONEER &&
+        placement.x === hero.x + delta.x &&
+        placement.y === hero.y + delta.y
+    );
+
+    if (auctioneer) {
+      this.onAuctionInteract?.();
       return;
     }
 

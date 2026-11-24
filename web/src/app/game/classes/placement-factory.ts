@@ -12,6 +12,7 @@ import {
   PLACEMENT_TYPE_ICE_PICKUP,
   PLACEMENT_TYPE_INFECTED_HERO,
   PLACEMENT_TYPE_MERCHANT,
+  PLACEMENT_TYPE_AUCTIONEER,
   PLACEMENT_TYPE_PROP,
   PLACEMENT_TYPE_KEY,
   PLACEMENT_TYPE_LOCK,
@@ -47,6 +48,7 @@ import { TeleportPlacement } from "./game-objects/teleport-placement";
 import { ThiefPlacement } from "./game-objects/thief-placement";
 import { InfectedHeroPlacement } from "./game-objects/infected-hero-placement";
 import { MerchantPlacement } from "./game-objects/merchant-placement";
+import { AuctioneerPlacement } from "./game-objects/auctioneer-placement";
 import { PropPlacement } from "./game-objects/prop-placement";
 
 const placementTypeClassMap = {
@@ -73,6 +75,7 @@ const placementTypeClassMap = {
   [PLACEMENT_TYPE_THIEF]: ThiefPlacement,
   [PLACEMENT_TYPE_INFECTED_HERO]: InfectedHeroPlacement,
   [PLACEMENT_TYPE_MERCHANT]: MerchantPlacement,
+  [PLACEMENT_TYPE_AUCTIONEER]: AuctioneerPlacement,
   [PLACEMENT_TYPE_PROP]: PropPlacement,
 };
 

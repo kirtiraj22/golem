@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { useEconomy } from "../../contexts/economy-context";
+import { useAuction } from "../../contexts/auction-context";
+import { useWorldClock } from "../../contexts/world-clock-context";
 
 const panelStyle: React.CSSProperties = {
   background: "#fff6d6",
@@ -15,16 +16,10 @@ const panelStyle: React.CSSProperties = {
   zIndex: "var(--ui-popup-z-index)",
 };
 
-function formatCountdown(ms: number): string {
-  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-}
-
 const WorldClock = () => {
-  const { snapshot, clock } = useEconomy();
+  const { data } = useAuction();
+  const { clock } = useWorldClock();
+  const day = data?.state.day ?? "—";
 
   return (
     <div
@@ -38,10 +33,10 @@ const WorldClock = () => {
       }}
     >
       <div style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.3 }}>
-        DAY {snapshot.day} · {clock.timeLabel}
+        DAY {day} · {clock.timeLabel}
       </div>
       <div style={{ fontSize: 8, lineHeight: 1.4, opacity: 0.7 }}>
-        MARKET CLOSES IN {formatCountdown(clock.msUntilDayEnd)}
+        SERVER-SYNCED MARKET LEDGER
       </div>
     </div>
   );

@@ -158,6 +158,21 @@ export interface SimulationState {
   totals: SimulationTotals;
 }
 
+/**
+ * The persisted slice of the market economy. Player balance and the current
+ * day deliberately live on the surrounding game state so there is only one
+ * authoritative copy of each.
+ */
+export interface GameEconomyState {
+  playerInventory: Inventory;
+  merchants: MerchantState[];
+  events: DemandShockEvent[];
+  history: SimulationLogEntry[];
+  initialMoneySupply: number;
+  initialStockTotals: Inventory;
+  totals: SimulationTotals;
+}
+
 export interface WorldSnapshot {
   day: number;
   goods: GoodDefinition[];

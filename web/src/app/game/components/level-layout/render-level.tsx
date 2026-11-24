@@ -5,7 +5,8 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import LevelState from "../../classes/level-state";
 import level1 from "../../levels/level-1";
 import { useMarketUi } from "../../contexts/market-ui-context";
-import { useEconomy } from "../../contexts/economy-context";
+import { useAuction } from "../../contexts/auction-context";
+import { useWorldClock } from "../../contexts/world-clock-context";
 import type { TradeLogEntry } from "../../simulation/types";
 import LevelCompleteMessage from "../hud/level-complete-message";
 import DeathMessage from "../hud/death-message";
@@ -32,12 +33,18 @@ const RenderLevel = ({
   const [level, setLevel] = useState<any>(null);
   const levelStateRef = useRef<LevelState | null>(null);
   const { isOpen: isMarketOpen, openMarket } = useMarketUi();
-  const { snapshot, clock } = useEconomy();
-  const snapshotRef = useRef(snapshot);
+  const { isOpen: isAuctionOpen, openAuction, data, economy } = useAuction();
+  const { clock } = useWorldClock();
+  const day = data?.state.day ?? 1;
+  const merchants = economy?.merchants ?? [];
+  const dayRef = useRef(day);
+  const merchantsRef = useRef(merchants);
   const clockRef = useRef(clock);
   const lastTradeIdRef = useRef(0);
+  const tradesInitializedRef = useRef(false);
 
-  snapshotRef.current = snapshot;
+  dayRef.current = day;
+  merchantsRef.current = merchants;
   clockRef.current = clock;
 
   useEffect(() => {
@@ -46,12 +53,13 @@ const RenderLevel = ({
         setLevel(newState);
       },
       levelConfig,
-      (merchantId) => openMarket(merchantId)
+      (merchantId) => openMarket(merchantId),
+      () => openAuction()
     );
 
     levelStateRef.current = levelState;
-    levelState.setGameClock(clockRef.current.minutes, snapshotRef.current.day);
-    levelState.setMerchantStates(snapshotRef.current.merchants);
+    levelState.setGameClock(clockRef.current.minutes, dayRef.current);
+    levelState.setMerchantStates(merchantsRef.current);
 
     setLevel(levelState.getState());
 
@@ -59,39 +67,52 @@ const RenderLevel = ({
       levelState.destroy();
       levelStateRef.current = null;
     };
-  }, [levelConfig, openMarket]);
+  }, [levelConfig, openMarket, openAuction]);
 
   useEffect(() => {
-    levelStateRef.current?.setGameClock(clock.minutes, snapshot.day);
-  }, [clock.minutes, snapshot.day]);
+    levelStateRef.current?.setGameClock(clock.minutes, day);
+  }, [clock.minutes, day]);
 
   useEffect(() => {
-    levelStateRef.current?.setMerchantStates(snapshot.merchants);
-  }, [snapshot.merchants]);
+    levelStateRef.current?.setMerchantStates(merchants);
+  }, [merchants]);
 
   useEffect(() => {
     const levelState = levelStateRef.current;
 
-    if (!levelState) {
+    if (!levelState || !economy) {
       return;
     }
 
-    const newTrades = snapshot.history.filter(
-      (entry): entry is TradeLogEntry =>
-        entry.type === "TRADE" && entry.id > lastTradeIdRef.current
+    const trades = economy.history.filter(
+      (entry): entry is TradeLogEntry => entry.type === "TRADE"
+    );
+    const latestTradeId =
+      trades.length > 0 ? trades[trades.length - 1].id : 0;
+
+    // Do not replay the whole ledger the first time it loads, but do animate
+    // every trade produced by the next server day.
+    if (!tradesInitializedRef.current) {
+      tradesInitializedRef.current = true;
+      lastTradeIdRef.current = latestTradeId;
+      return;
+    }
+
+    const newTrades = trades.filter(
+      (entry) => entry.id > lastTradeIdRef.current
     );
 
     if (newTrades.length === 0) {
       return;
     }
 
-    lastTradeIdRef.current = newTrades[newTrades.length - 1].id;
+    lastTradeIdRef.current = latestTradeId;
     levelState.enqueueTrades(newTrades);
-  }, [snapshot.history]);
+  }, [economy]);
 
   useEffect(() => {
-    levelStateRef.current?.setInputEnabled(!isMarketOpen);
-  }, [isMarketOpen]);
+    levelStateRef.current?.setInputEnabled(!isMarketOpen && !isAuctionOpen);
+  }, [isMarketOpen, isAuctionOpen]);
   // console.log("Level: ",level);
 
   if (!level) {
