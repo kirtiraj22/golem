@@ -86,6 +86,19 @@ body {
   opacity: 1 !important;
 }
 
+/* Keep the wallet onboarding panel on the same pixel/monospace visual system.
+ * No !important here: inline styles for the wallet address and labels should
+ * still win over the inherited panel typography. */
+.onboarding-panel,
+.onboarding-panel * {
+  font-family: inherit;
+  letter-spacing: inherit;
+}
+
+.onboarding-panel button:disabled {
+  cursor: not-allowed;
+}
+
 .market-select-dropdown * {
   font-family: inherit !important;
   letter-spacing: inherit !important;

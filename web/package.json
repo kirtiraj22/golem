@@ -8,17 +8,25 @@
     "start": "next start -p 3001",
     "lint": "next lint",
     "check:types": "npx tsc --noEmit",
+    "test": "npm run test:auth",
+    "test:auth": "tsx --test src/lib/solana/verify.test.ts",
     "sim:verify": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/verify-simulation.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.13.0",
     "@mantine/core": "^7.6.2",
     "@mantine/hooks": "^7.6.2",
+    "@solana/wallet-adapter-base": "^0.9.28",
+    "@solana/wallet-adapter-react": "^0.15.40",
+    "@solana/wallet-adapter-react-ui": "^0.9.40",
+    "@solana/web3.js": "^1.99.0",
+    "@supabase/supabase-js": "^2.119.2",
     "classnames": "^2.5.1",
     "howler": "^2.2.4",
     "next": "^16.4.6",
     "react": "19.2",
-    "react-dom": "19.2"
+    "react-dom": "19.2",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@commitlint/cli": "^16.1.0",
@@ -35,6 +43,7 @@
     "postcss": "^8",
     "prettier": "^2.8.0",
     "tailwindcss": "^3",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
