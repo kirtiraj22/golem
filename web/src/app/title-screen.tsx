@@ -1,6 +1,6 @@
 import Image from "next/image";
-import Link from "next/link";
 import localFont from "next/font/local";
+import OnboardingGate from "./onboarding/onboarding-gate";
 
 const pixelFont = localFont({
   src: "./fonts/GAMERIA.ttf",
@@ -12,7 +12,13 @@ const INK = "#2b1a08";
 const PAPER = "#fff6d6";
 const GOLD = "#f4c95d";
 
-export default function TitleScreen() {
+type TitleScreenProps = {
+  initialOnboardingOpen?: boolean;
+};
+
+export default function TitleScreen({
+  initialOnboardingOpen = false,
+}: TitleScreenProps) {
   return (
     <main
       className="relative flex min-h-screen w-full items-center justify-center overflow-hidden px-4 py-8"
@@ -119,22 +125,10 @@ export default function TitleScreen() {
             GRAIN &nbsp;·&nbsp; WOOD &nbsp;·&nbsp; TOOLS
           </p>
 
-          <Link
-            href="/game"
-            className="mt-7 inline-flex min-h-[58px] items-center justify-center border-4 px-8 py-3 transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#2b1a08] focus-visible:ring-offset-4 focus-visible:ring-offset-[#fff6d6]"
-            style={{
-              backgroundColor: GOLD,
-              borderColor: INK,
-              boxShadow: `5px 5px 0 ${INK}`,
-              color: INK,
-              fontFamily: pixelFont.style.fontFamily,
-              fontSize: "clamp(0.8rem, 1.5vw, 1rem)",
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-            }}
-          >
-            Start Trading
-          </Link>
+          <OnboardingGate
+            fontFamily={pixelFont.style.fontFamily}
+            initialOpen={initialOnboardingOpen}
+          />
 
           <p
             className="mt-5"
