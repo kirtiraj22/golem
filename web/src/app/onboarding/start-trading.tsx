@@ -370,7 +370,7 @@ export default function StartTrading({
       try {
         await connect();
         setNotice(
-          "Wallet connected. Sign in to create or load your trader profile."
+          "Wallet connected. Sign in to create or load your player profile."
         );
       } catch (connectError) {
         setError(
@@ -684,13 +684,13 @@ export default function StartTrading({
                 textTransform: "uppercase",
               }}
             >
-              {profile ? "Welcome back" : "Enter the market"}
+              {profile ? "Welcome back" : "Enter the auction"}
             </h2>
 
             <p className="mt-2" style={bodyTextStyle}>
               {profile
                 ? "Your wallet session is already verified. Continue into the existing game world."
-                : "Choose a trader name, connect your Solana wallet, and sign a short message to create or load your player profile."}
+                : "Choose a player name, connect your Solana wallet, and sign a short message to create or load your player profile."}
             </p>
 
             {error && (
@@ -738,7 +738,7 @@ export default function StartTrading({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p style={sectionLabelStyle}>Trader</p>
+                      <p style={sectionLabelStyle}>Player</p>
                       <p
                         style={{
                           color: INK,
@@ -808,7 +808,7 @@ export default function StartTrading({
                   style={sectionLabelStyle}
                   className="block"
                 >
-                  Trader name
+                  Player name
                 </label>
                 <input
                   ref={nameInputRef}

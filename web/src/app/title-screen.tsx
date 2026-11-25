@@ -75,7 +75,7 @@ export default function TitleScreen({
               textTransform: "uppercase",
             }}
           >
-            Market Town
+            Rook&apos;s Riverside
           </p>
 
           <h1
@@ -89,7 +89,7 @@ export default function TitleScreen({
               textTransform: "uppercase",
             }}
           >
-            The Copper Stall
+            Stock Wars
           </h1>
 
           <div
@@ -108,7 +108,7 @@ export default function TitleScreen({
               maxWidth: 460,
             }}
           >
-            A living market. Your trading story.
+            Win the lockup. Flip the loot. Own the row.
           </p>
 
           <p
@@ -122,7 +122,8 @@ export default function TitleScreen({
               opacity: 0.72,
             }}
           >
-            GRAIN &nbsp;·&nbsp; WOOD &nbsp;·&nbsp; TOOLS
+            ELECTRONICS &nbsp;·&nbsp; FURNITURE &nbsp;·&nbsp; ANTIQUES
+            &nbsp;·&nbsp; TOOLS &nbsp;·&nbsp; COLLECTIBLES &nbsp;·&nbsp; MISC
           </p>
 
           <OnboardingGate
@@ -142,7 +143,7 @@ export default function TitleScreen({
               textTransform: "uppercase",
             }}
           >
-            An autonomous market awaits
+            A storage auction empire awaits
           </p>
         </div>
       </section>
