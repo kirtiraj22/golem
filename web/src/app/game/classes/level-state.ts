@@ -50,9 +50,12 @@ type ActiveNpcTrade = {
 };
 
 const GOOD_LABELS: Record<string, string> = {
-  GRAIN: "Grain",
-  WOOD: "Wood",
-  TOOLS: "Tools",
+  electronics: "Electronics",
+  furniture: "Furniture",
+  antiques: "Antiques",
+  tools: "Tools",
+  collectibles: "Collectibles",
+  misc: "Misc Valuables",
 };
 
 interface LevelStateData {

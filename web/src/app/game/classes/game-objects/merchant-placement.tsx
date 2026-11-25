@@ -8,8 +8,12 @@ import {
 } from "~/constants/helpers";
 import Placement from "../placement";
 import Body from "../../components/object-graphics/body";
+import { GOOD_IDS } from "../../simulation/types";
 
-export type MerchantRole = "farmer" | "lumberjack" | "blacksmith";
+export type MerchantRole =
+  | "pawnbroker"
+  | "furniture-dealer"
+  | "salvage-buyer";
 
 export type MerchantRoutinePoint = {
   x: number;
@@ -33,15 +37,15 @@ const DEFAULT_MERCHANT_FRAMES: Record<
   MerchantRole,
   { left: string; right: string }
 > = {
-  farmer: {
+  pawnbroker: {
     left: TILES.HERO_CONVEYOR_LEFT,
     right: TILES.HERO_CONVEYOR_RIGHT,
   },
-  lumberjack: {
+  "furniture-dealer": {
     left: TILES.HERO_EDITING_LEFT,
     right: TILES.HERO_EDITING_RIGHT,
   },
-  blacksmith: {
+  "salvage-buyer": {
     left: TILES.HERO_FIRE_LEFT,
     right: TILES.HERO_FIRE_RIGHT,
   },
@@ -391,7 +395,10 @@ export class MerchantPlacement extends Placement {
         ? ` · ${merchantState.balance}c`
         : "";
     const stock = merchantState?.inventory
-      ? ` · G${merchantState.inventory.GRAIN} W${merchantState.inventory.WOOD} T${merchantState.inventory.TOOLS}`
+      ? ` · ${GOOD_IDS.map(
+          (goodId) =>
+            `${goodId.charAt(0).toUpperCase()}${merchantState.inventory[goodId]}`
+        ).join(" ")}`
       : "";
 
     return (

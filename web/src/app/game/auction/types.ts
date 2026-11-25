@@ -1,15 +1,13 @@
-import type { GameEconomyState, GoodId } from "../simulation/types";
+import {
+  GOOD_IDS,
+  type GameEconomyState,
+  type GoodId,
+} from "../simulation/types";
 
-export const ITEM_CATEGORIES = [
-  "electronics",
-  "collectibles",
-  "tools",
-  "furniture",
-  "fashion",
-  "curios",
-] as const;
+/** Auction categories are the same ids as the dealer economy categories. */
+export const ITEM_CATEGORIES = GOOD_IDS;
 
-export type ItemCategory = (typeof ITEM_CATEGORIES)[number];
+export type ItemCategory = GoodId;
 
 export const ITEM_RARITIES = [
   "common",
@@ -150,10 +148,10 @@ export type GameAction =
   | { action: "refresh" }
   | { action: "bid"; lotId: string; amount: number }
   | { action: "reveal"; lotId: string }
-  | { action: "sell"; itemId: string }
+  | { action: "sell"; itemId: string; buyerId?: string }
   | { action: "advance-day"; expectedDay?: number }
   | { action: "fast-forward-week"; expectedDay?: number }
-  | { action: "start-rumour" }
+  | { action: "start-rumour"; goodId: GoodId }
   | {
       action: "buy-good";
       goodId: GoodId;
@@ -190,22 +188,26 @@ export const RARITY_COLORS: Record<ItemRarity, string> = {
 
 export const CATEGORY_LABELS: Record<ItemCategory, string> = {
   electronics: "Electronics",
-  collectibles: "Collectibles",
-  tools: "Tools",
   furniture: "Furniture",
-  fashion: "Fashion",
-  curios: "Curios",
+  antiques: "Antiques",
+  tools: "Tools",
+  collectibles: "Collectibles",
+  misc: "Misc Valuables",
 };
 
 export const CATEGORY_ICONS: Record<ItemCategory, string> = {
   electronics: "▣",
-  collectibles: "◆",
-  tools: "⚒",
   furniture: "▤",
-  fashion: "✦",
-  curios: "◈",
+  antiques: "◈",
+  tools: "⚒",
+  collectibles: "◆",
+  misc: "✦",
 };
 
+/**
+ * @deprecated Auction-only price helper retained for the commented legacy
+ * modal. Active selling uses lootSaleValue() and the dealer economy.
+ */
 export function saleValue(
   item: InventoryItem,
   multipliers: Record<ItemCategory, number>
@@ -213,6 +215,25 @@ export function saleValue(
   const condition = CONDITION_MULTIPLIERS[item.condition];
   const market = multipliers[item.category] ?? 1;
   return Math.max(1, Math.round(item.baseValue * condition * market));
+}
+
+/**
+ * Convert an item's intrinsic worth and condition into a dealer offer using
+ * the live category price. The market factor is clamped so a single rumour
+ * cannot make a legendary item impossible for any dealer to afford.
+ */
+export function lootSaleValue(
+  item: Pick<InventoryItem, "baseValue" | "condition">,
+  categoryPrice: number,
+  categoryBasePrice: number
+): number {
+  const condition = CONDITION_MULTIPLIERS[item.condition];
+  const marketFactor =
+    categoryBasePrice > 0
+      ? Math.min(1.4, Math.max(0.65, categoryPrice / categoryBasePrice))
+      : 1;
+
+  return Math.max(1, Math.round(item.baseValue * condition * marketFactor));
 }
 
 export function itemConditionLabel(condition: ItemCondition): string {

@@ -226,7 +226,7 @@ export const ITEM_CATALOGUE: ItemDefinition[] = [
   {
     key: "leather-jacket",
     name: "Leather Jacket",
-    category: "fashion",
+    category: "antiques",
     rarity: "uncommon",
     icon: "🧥",
     baseValue: 120,
@@ -235,7 +235,7 @@ export const ITEM_CATALOGUE: ItemDefinition[] = [
   {
     key: "designer-bag",
     name: "Designer Handbag",
-    category: "fashion",
+    category: "antiques",
     rarity: "rare",
     icon: "👜",
     baseValue: 240,
@@ -244,7 +244,7 @@ export const ITEM_CATALOGUE: ItemDefinition[] = [
   {
     key: "cowboy-boots",
     name: "Cowboy Boots",
-    category: "fashion",
+    category: "misc",
     rarity: "common",
     icon: "👢",
     baseValue: 60,
@@ -253,7 +253,7 @@ export const ITEM_CATALOGUE: ItemDefinition[] = [
   {
     key: "vintage-watch",
     name: "Vintage Wristwatch",
-    category: "fashion",
+    category: "antiques",
     rarity: "legendary",
     icon: "⌚",
     baseValue: 420,
@@ -262,7 +262,7 @@ export const ITEM_CATALOGUE: ItemDefinition[] = [
   {
     key: "sunglasses-case",
     name: "Sunglasses Case",
-    category: "fashion",
+    category: "misc",
     rarity: "common",
     icon: "🕶️",
     baseValue: 25,
@@ -271,7 +271,7 @@ export const ITEM_CATALOGUE: ItemDefinition[] = [
   {
     key: "brass-compass",
     name: "Brass Compass",
-    category: "curios",
+    category: "antiques",
     rarity: "uncommon",
     icon: "🧭",
     baseValue: 95,
@@ -280,7 +280,7 @@ export const ITEM_CATALOGUE: ItemDefinition[] = [
   {
     key: "ship-bottle",
     name: "Ship in a Bottle",
-    category: "curios",
+    category: "antiques",
     rarity: "rare",
     icon: "🍾",
     baseValue: 175,
@@ -289,7 +289,7 @@ export const ITEM_CATALOGUE: ItemDefinition[] = [
   {
     key: "taxidermy-owl",
     name: "Taxidermy Owl",
-    category: "curios",
+    category: "antiques",
     rarity: "rare",
     icon: "🦉",
     baseValue: 190,
@@ -298,7 +298,7 @@ export const ITEM_CATALOGUE: ItemDefinition[] = [
   {
     key: "crystal-skull",
     name: "Crystal Skull",
-    category: "curios",
+    category: "antiques",
     rarity: "legendary",
     icon: "💀",
     baseValue: 480,
@@ -307,7 +307,7 @@ export const ITEM_CATALOGUE: ItemDefinition[] = [
   {
     key: "old-map",
     name: "Old Map Roll",
-    category: "curios",
+    category: "antiques",
     rarity: "uncommon",
     icon: "🗺️",
     baseValue: 85,
@@ -316,7 +316,7 @@ export const ITEM_CATALOGUE: ItemDefinition[] = [
   {
     key: "music-box",
     name: "Music Box",
-    category: "curios",
+    category: "antiques",
     rarity: "common",
     icon: "🎵",
     baseValue: 50,
@@ -325,7 +325,7 @@ export const ITEM_CATALOGUE: ItemDefinition[] = [
   {
     key: "porcelain-doll",
     name: "Porcelain Doll",
-    category: "curios",
+    category: "antiques",
     rarity: "common",
     icon: "🪆",
     baseValue: 55,
@@ -334,7 +334,7 @@ export const ITEM_CATALOGUE: ItemDefinition[] = [
   {
     key: "key-ring",
     name: "Mystery Key Ring",
-    category: "curios",
+    category: "misc",
     rarity: "common",
     icon: "🔑",
     baseValue: 20,
@@ -371,7 +371,7 @@ export const STORAGE_LOT_TEMPLATES: StorageLotTemplate[] = [
     previewSeconds: 22,
     liveSeconds: 140,
     itemCount: { min: 4, max: 6 },
-    categories: ["tools", "electronics", "curios"],
+    categories: ["tools", "electronics", "misc"],
   },
   {
     key: "estate-leftovers",
@@ -383,7 +383,7 @@ export const STORAGE_LOT_TEMPLATES: StorageLotTemplate[] = [
     previewSeconds: 18,
     liveSeconds: 120,
     itemCount: { min: 3, max: 5 },
-    categories: ["furniture", "curios", "collectibles"],
+    categories: ["furniture", "antiques", "collectibles"],
   },
   {
     key: "collectors-lockup",
@@ -395,7 +395,7 @@ export const STORAGE_LOT_TEMPLATES: StorageLotTemplate[] = [
     previewSeconds: 26,
     liveSeconds: 160,
     itemCount: { min: 3, max: 5 },
-    categories: ["collectibles", "electronics"],
+    categories: ["collectibles", "electronics", "antiques"],
     rarityBoost: "rare",
   },
   {
@@ -408,19 +408,19 @@ export const STORAGE_LOT_TEMPLATES: StorageLotTemplate[] = [
     previewSeconds: 20,
     liveSeconds: 150,
     itemCount: { min: 4, max: 6 },
-    categories: ["tools", "furniture"],
+    categories: ["tools", "furniture", "misc"],
   },
   {
     key: "boutique-inventory",
-    title: "Boutique Inventory",
-    teaser: "Mannequins, garment bags, and one very good handbag.",
+    title: "Boutique Closeout",
+    teaser: "Mannequins, garment bags, and one very good vintage handbag.",
     facility: "Market Lane Arcade",
     sizeLabel: "5 × 10",
     startingBid: 180,
     previewSeconds: 20,
     liveSeconds: 135,
     itemCount: { min: 4, max: 6 },
-    categories: ["fashion", "collectibles"],
+    categories: ["antiques", "collectibles", "misc"],
   },
   {
     key: "grandmothers-attic",
@@ -432,7 +432,7 @@ export const STORAGE_LOT_TEMPLATES: StorageLotTemplate[] = [
     previewSeconds: 16,
     liveSeconds: 110,
     itemCount: { min: 3, max: 5 },
-    categories: ["curios", "furniture"],
+    categories: ["antiques", "furniture", "collectibles"],
   },
   {
     key: "arcade-storage",
@@ -459,11 +459,11 @@ export const STORAGE_LOT_TEMPLATES: StorageLotTemplate[] = [
     itemCount: { min: 4, max: 7 },
     categories: [
       "electronics",
-      "collectibles",
-      "tools",
       "furniture",
-      "fashion",
-      "curios",
+      "antiques",
+      "tools",
+      "collectibles",
+      "misc",
     ],
   },
 ];

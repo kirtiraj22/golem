@@ -24,7 +24,7 @@ export const MarketUiProvider = ({
   children: React.ReactNode;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedMerchantId, setSelectedMerchantId] = useState("farmer");
+  const [selectedMerchantId, setSelectedMerchantId] = useState("pawnbroker");
 
   const openMarket = useCallback((merchantId?: string) => {
     if (merchantId) {

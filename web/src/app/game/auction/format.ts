@@ -1,5 +1,6 @@
 import type { InventoryItem, StorageLot } from "./types";
-import { saleValue } from "./types";
+import { lootSaleValue } from "./types";
+import type { WorldSnapshot } from "../simulation/types";
 
 export function formatCoins(value: number): string {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(
@@ -57,14 +58,29 @@ export function lotStatusColor(lot: StorageLot): string {
   return "#fff6d6";
 }
 
+export function itemDealerOffer(
+  item: InventoryItem,
+  economy: WorldSnapshot | null
+): number {
+  if (!economy) {
+    return item.baseValue;
+  }
+
+  const definition = economy.goods.find((good) => good.id === item.category);
+
+  return lootSaleValue(
+    item,
+    economy.prices[item.category],
+    definition?.basePrice ?? 1
+  );
+}
+
 export function haulValue(
   inventory: InventoryItem[],
-  multipliers: Record<string, number>
+  economy: WorldSnapshot | null
 ): number {
   return inventory.reduce(
-    (total, item) =>
-      total +
-      saleValue(item, multipliers as Parameters<typeof saleValue>[1]),
+    (total, item) => total + itemDealerOffer(item, economy),
     0
   );
 }

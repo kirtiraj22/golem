@@ -2,15 +2,23 @@
 
 import localFont from "next/font/local";
 import React, { useState } from "react";
-import { Modal, NumberInput } from "@mantine/core";
+import { Modal } from "@mantine/core";
 import { useAuction } from "../../contexts/auction-context";
 import { useMarketUi } from "../../contexts/market-ui-context";
 import { useWorldClock } from "../../contexts/world-clock-context";
+import {
+  CATEGORY_LABELS,
+  RARITY_LABELS,
+  itemConditionLabel,
+  lootSaleValue,
+  type InventoryItem,
+} from "../../auction/types";
 import type {
   GoodDefinition,
   GoodId,
   MerchantState,
   TradeLogEntry,
+  WorldSnapshot,
 } from "../../simulation/types";
 
 const pixelFont = localFont({
@@ -36,9 +44,9 @@ const fontVars = {
 } as React.CSSProperties;
 
 const roleLabels: Record<MerchantState["role"], string> = {
-  FARMER: "Farmer",
-  LUMBERJACK: "Lumberjack",
-  BLACKSMITH: "Blacksmith",
+  PAWNBROKER: "Pawnbroker",
+  FURNITURE_DEALER: "Furniture dealer",
+  SALVAGE_BUYER: "Salvage buyer",
 };
 
 /*
@@ -448,25 +456,12 @@ const MARKET_CSS = `
 /* ---- Modal scrollbar ------------------------------------------------------ */
 .mk-scroll { scrollbar-color: #7d4f25 #f3e3b0; }
 .mk-scroll::-webkit-scrollbar { width: 14px; }
-.mk-scroll::-webkit-scrollbar-track { background: #f3e3b0; border-left: 3px solid ${INK}; }
-.mk-scroll::-webkit-scrollbar-thumb { background: #7d4f25; border: 3px solid ${INK}; }
-
-@media (prefers-reduced-motion: reduce) {
-  .mk-btn, .mk-action { transition: none; }
-}
+.mk-scroll::-webkit-scrollbar-thumb { background: #7d4f25; border: 2px solid #2b1a08; }
 `;
 
 /* -------------------------------------------------------------------------- */
-/*  Display-only helpers (mirror playerBuy() / playerSell() constraints)       */
+/*  Display helpers                                                            */
 /* -------------------------------------------------------------------------- */
-
-// The simulation remains the authority; these are display-only maximums.
-function sellableAmount(merchant: MerchantState, goodId: GoodId): number {
-  return Math.max(
-    0,
-    merchant.inventory[goodId] - (merchant.reserves[goodId] ?? 0)
-  );
-}
 
 function demandCapacity(merchant: MerchantState, goodId: GoodId): number {
   return Math.max(
@@ -475,8 +470,18 @@ function demandCapacity(merchant: MerchantState, goodId: GoodId): number {
   );
 }
 
-function affordableQuantity(balance: number, unitPrice: number): number {
-  return unitPrice > 0 ? Math.max(0, Math.floor(balance / unitPrice)) : 0;
+function offerFor(item: InventoryItem, economy: WorldSnapshot | null): number {
+  if (!economy) {
+    return item.baseValue;
+  }
+
+  const definition = economy.goods.find((good) => good.id === item.category);
+
+  return lootSaleValue(
+    item,
+    economy.prices[item.category],
+    definition?.basePrice ?? 1
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -505,12 +510,12 @@ function Coin() {
   return <span className="mk-coin" aria-hidden="true" />;
 }
 
-function ItemSlot({
-  letter,
+function Slot({
+  children,
   large = false,
   round = false,
 }: {
-  letter: string;
+  children: React.ReactNode;
   large?: boolean;
   round?: boolean;
 }) {
@@ -521,166 +526,8 @@ function ItemSlot({
         round ? "mk-slot--round" : ""
       }`}
     >
-      {letter.charAt(0).toUpperCase()}
+      {children}
     </span>
-  );
-}
-
-function DeskSlot({
-  label,
-  letter,
-  round,
-  title,
-  detail,
-  prevLabel,
-  nextLabel,
-  onPrev,
-  onNext,
-}: {
-  label: string;
-  letter: string;
-  round?: boolean;
-  title: string;
-  detail: React.ReactNode;
-  prevLabel: string;
-  nextLabel: string;
-  onPrev: () => void;
-  onNext: () => void;
-}) {
-  return (
-    <div className="mk-desk-slot">
-      <p className="mk-label mk-pixel">{label}</p>
-      <div className="mk-desk-slot-row">
-        <button
-          type="button"
-          className="mk-arrow"
-          aria-label={prevLabel}
-          onClick={onPrev}
-        >
-          ‹
-        </button>
-        <ItemSlot letter={letter} large round={round} />
-        <div className="min-w-0 flex-1">
-          <p className="mk-desk-name mk-pixel">{title}</p>
-          <div className="mk-desk-detail">{detail}</div>
-        </div>
-        <button
-          type="button"
-          className="mk-arrow"
-          aria-label={nextLabel}
-          onClick={onNext}
-        >
-          ›
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function TradePane({
-  kind,
-  counterpart,
-  statLabel,
-  statValue,
-  maxLabel,
-  max,
-  onMax,
-  moneyLabel,
-  moneyAmount,
-  hasQuantity,
-  purseAfter,
-  actionLabel,
-  onAction,
-  explanation,
-}: {
-  kind: "buy" | "sell";
-  counterpart: string;
-  statLabel: string;
-  statValue: number;
-  maxLabel: string;
-  max: number;
-  onMax: () => void;
-  moneyLabel: string;
-  moneyAmount: number;
-  hasQuantity: boolean;
-  purseAfter: number;
-  actionLabel: string;
-  onAction: () => void;
-  explanation: string;
-}) {
-  const isBuy = kind === "buy";
-
-  return (
-    <div className={`mk-pane mk-pane--${kind}`}>
-      <div className="mk-pane-head">
-        <h3 className="mk-pane-title mk-pixel">{isBuy ? "Buy" : "Sell"}</h3>
-        <span className="mk-chip">{isBuy ? "Merchant → You" : "You → Merchant"}</span>
-      </div>
-
-      <p className="mk-pane-who">
-        {isBuy ? "From " : "To "}
-        <strong>{counterpart}</strong>
-      </p>
-
-      <div className="mk-stats">
-        <div className="mk-stat">
-          <p className="mk-stat-label">{statLabel}</p>
-          <p className="mk-stat-val mk-pixel">{statValue}</p>
-        </div>
-        <div className="mk-stat">
-          <div className="mk-stat-row">
-            <p className="mk-stat-label">{maxLabel}</p>
-            <button
-              type="button"
-              className="mk-btn mk-btn--sm"
-              disabled={max < 1}
-              onClick={onMax}
-            >
-              Max
-            </button>
-          </div>
-          <p className="mk-stat-val mk-pixel">{max}</p>
-        </div>
-      </div>
-
-      <div className="mk-money">
-        <span>{moneyLabel}</span>
-        <span
-          className={`mk-money-amt mk-pixel ${
-            isBuy ? "mk-money-amt--out" : "mk-money-amt--in"
-          }`}
-        >
-          {hasQuantity ? (
-            <>
-              {isBuy ? "−" : "+"}
-              {moneyAmount}
-              <Coin />
-            </>
-          ) : (
-            "—"
-          )}
-        </span>
-      </div>
-
-      {hasQuantity && (
-        <p className={`mk-after ${purseAfter < 0 ? "mk-after--bad" : ""}`}>
-          {purseAfter < 0
-            ? `Short by ${Math.abs(purseAfter)} coins`
-            : `Purse after: ${purseAfter} coins`}
-        </p>
-      )}
-
-      <button
-        type="button"
-        className={`mk-btn mk-btn--block ${isBuy ? "mk-btn--green" : ""}`}
-        disabled={max < 1}
-        onClick={onAction}
-      >
-        {actionLabel}
-      </button>
-
-      {explanation && <p className="mk-note">{explanation}</p>}
-    </div>
   );
 }
 
@@ -711,11 +558,12 @@ function ActionButton({
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Market HUD                                                                 */
+/*  Dealer HUD                                                                 */
 /* -------------------------------------------------------------------------- */
 
 const MarketHud = () => {
   const {
+    data,
     economy,
     feedback,
     error: ledgerError,
@@ -723,8 +571,8 @@ const MarketHud = () => {
     advanceDay,
     fastForwardWeek,
     startRumour,
-    buyGood,
-    sellGood,
+    sellItem,
+    busy,
   } = useAuction();
 
   const { clock } = useWorldClock();
@@ -737,8 +585,7 @@ const MarketHud = () => {
     selectMerchant,
   } = useMarketUi();
 
-  const [goodId, setGoodId] = useState<GoodId>("GRAIN");
-  const [quantity, setQuantity] = useState<number | string>(1);
+  const [rumourGoodId, setRumourGoodId] = useState<GoodId>("electronics");
 
   if (!economy) {
     return (
@@ -755,7 +602,7 @@ const MarketHud = () => {
         }}
       >
         <Coin />
-        Market · loading…
+        Dealers · loading…
       </button>
     );
   }
@@ -764,16 +611,15 @@ const MarketHud = () => {
   const error = feedback?.tone === "error" ? feedback.message : ledgerError;
   const clearError = dismissError;
 
-  const selectedGood =
-    snapshot.goods.find((good) => good.id === goodId) ?? snapshot.goods[0];
   const selectedMerchant =
     snapshot.merchants.find((merchant) => merchant.id === selectedMerchantId) ??
     snapshot.merchants[0];
   const merchantId = selectedMerchant.id;
 
-  const grainRumourActive = snapshot.activeEvents.some(
-    (event) => event.goodId === "GRAIN"
-  );
+  const playerItems = data?.state.inventory ?? [];
+  const dealerItems = [...playerItems]
+    .filter((item) => (selectedMerchant.wants[item.category] ?? 0) > 0)
+    .sort((a, b) => offerFor(b, snapshot) - offerFor(a, snapshot));
 
   const latestTrades = snapshot.history
     .filter((entry): entry is TradeLogEntry => entry.type === "TRADE")
@@ -794,115 +640,20 @@ const MarketHud = () => {
   const goodName = (entryGoodId: GoodId) =>
     snapshot.goods.find((good) => good.id === entryGoodId)?.name ?? entryGoodId;
 
-  const unitPrice = snapshot.prices[selectedGood.id];
-  const tradeQuantity =
-    typeof quantity === "number" ? quantity : Number(quantity);
-  const currentQty =
-    Number.isFinite(tradeQuantity) && tradeQuantity > 0 ? tradeQuantity : 0;
-
-  const buyStock = sellableAmount(selectedMerchant, selectedGood.id);
-  const playerAffordable = affordableQuantity(
-    snapshot.player.balance,
-    unitPrice
+  const rumourGood =
+    snapshot.goods.find((good) => good.id === rumourGoodId) ??
+    snapshot.goods[0];
+  const rumourActive = snapshot.activeEvents.some(
+    (event) => event.goodId === rumourGood.id
   );
-  const maxBuy = Math.min(buyStock, playerAffordable);
-
-  const sellDemand = demandCapacity(selectedMerchant, selectedGood.id);
-  const merchantAffordable = affordableQuantity(
-    selectedMerchant.balance,
-    unitPrice
-  );
-  const maxSell = Math.min(
-    snapshot.player.inventory[selectedGood.id],
-    sellDemand,
-    merchantAffordable
-  );
-
-  const buyCost = tradeQuantity > 0 ? tradeQuantity * unitPrice : 0;
-  const sellRevenue = tradeQuantity > 0 ? tradeQuantity * unitPrice : 0;
-
-  const otherSellers = snapshot.merchants.filter(
-    (merchant) =>
-      merchant.id !== selectedMerchant.id &&
-      sellableAmount(merchant, selectedGood.id) > 0
-  );
-  const demandBuyers = snapshot.merchants.filter(
-    (merchant) => demandCapacity(merchant, selectedGood.id) > 0
-  );
-
-  const buyExplanation =
-    buyStock <= 0
-      ? `${selectedMerchant.name} has no ${
-          selectedGood.name
-        } above their reserve.${
-          otherSellers.length > 0
-            ? ` Try ${otherSellers
-                .map((merchant) => merchant.name)
-                .join(" or ")}.`
-            : ""
-        }`
-      : playerAffordable <= 0
-      ? `You need at least ${unitPrice} coins to buy one ${selectedGood.name}.`
-      : "";
-
-  const sellExplanation =
-    sellDemand <= 0
-      ? `${selectedMerchant.name} already has enough ${
-          selectedGood.name
-        } and is not buying more.${
-          demandBuyers.length > 0
-            ? ` Try ${demandBuyers
-                .map((merchant) => merchant.name)
-                .join(" or ")}.`
-            : ` No merchant currently wants ${selectedGood.name}.`
-        }`
-      : snapshot.player.inventory[selectedGood.id] <= 0
-      ? `You have no ${selectedGood.name} to sell.`
-      : merchantAffordable <= 0
-      ? `${selectedMerchant.name} cannot afford one ${selectedGood.name} right now.`
-      : "";
-
-  const handleGoodChange = (value: string | null) => {
-    if (!value) {
-      return;
-    }
-
-    const nextGood = snapshot.goods.find((good) => good.id === value);
-    if (nextGood) {
-      setGoodId(nextGood.id);
-      clearError();
-    }
-  };
-
-  const handleMerchantChange = (value: string | null) => {
-    if (!value) {
-      return;
-    }
-
-    selectMerchant(value);
-    clearError();
-  };
-
-  // Desk arrows: step through the same lists the rows select from.
-  const cycleGood = (step: number) => {
-    const count = snapshot.goods.length;
-    const index = snapshot.goods.findIndex((good) => good.id === selectedGood.id);
-    handleGoodChange(snapshot.goods[(index + step + count) % count].id);
-  };
-
-  const cycleMerchant = (step: number) => {
-    const count = snapshot.merchants.length;
-    const index = snapshot.merchants.findIndex(
-      (merchant) => merchant.id === selectedMerchant.id
-    );
-    handleMerchantChange(snapshot.merchants[(index + step + count) % count].id);
-  };
 
   const renderGoodChips = (merchant: MerchantState, goods: GoodDefinition[]) =>
     goods.map((good) => (
       <span
         key={good.id}
-        className={`mk-chip ${merchant.inventory[good.id] > 0 ? "" : "mk-chip--dim"}`}
+        className={`mk-chip ${
+          merchant.inventory[good.id] > 0 ? "" : "mk-chip--dim"
+        }`}
       >
         {good.name} {merchant.inventory[good.id]}
       </span>
@@ -910,6 +661,16 @@ const MarketHud = () => {
 
   const wantedGoods = (merchant: MerchantState) =>
     snapshot.goods.filter((good) => (merchant.wants[good.id] ?? 0) > 0);
+
+  const handleMerchantChange = (merchantIdValue: string) => {
+    selectMerchant(merchantIdValue);
+    clearError();
+  };
+
+  const handleRumourChange = (goodId: GoodId) => {
+    setRumourGoodId(goodId);
+    clearError();
+  };
 
   return (
     <>
@@ -928,13 +689,13 @@ const MarketHud = () => {
         }}
       >
         <Coin />
-        Market · Day {snapshot.day}
+        Dealers · Day {snapshot.day}
       </button>
 
       <Modal
         opened={isOpen}
         onClose={closeMarket}
-        title="MARKET ROW"
+        title="DEALER ROW"
         size="min(1180px, 96vw)"
         centered
         zIndex={1000}
@@ -975,11 +736,12 @@ const MarketHud = () => {
         }}
       >
         <div className="mk-root" style={fontVars}>
-          {/* Header sign: location, clock, purse */}
           <header className="mk-hero">
             <div className="mk-hero-town">
               <p className="mk-pixel">{snapshot.player.stall.town}</p>
-              <p className="mk-hero-sub">Stall: {snapshot.player.stall.name}</p>
+              <p className="mk-hero-sub">
+                Your stall: {snapshot.player.stall.name}
+              </p>
             </div>
 
             <div className="mk-plaque">
@@ -1002,13 +764,13 @@ const MarketHud = () => {
           {error && (
             <div role="alert" className="mk-alert">
               <div>
-                <p className="mk-alert-title mk-pixel">Trade blocked</p>
+                <p className="mk-alert-title mk-pixel">Deal blocked</p>
                 <p className="mk-alert-text">{error}</p>
               </div>
               <button
                 type="button"
                 className="mk-x"
-                aria-label="Dismiss trade error"
+                aria-label="Dismiss dealer error"
                 onClick={clearError}
               >
                 ×
@@ -1029,10 +791,17 @@ const MarketHud = () => {
 
           {snapshot.activeEvents.length > 0 && (
             <div className="mk-news">
-              <p className="mk-news-title mk-pixel">Town talk</p>
+              <p className="mk-news-title mk-pixel">Dealer demand</p>
               {snapshot.activeEvents.map((event) => (
-                <span key={event.id} className="mk-chip mk-chip--gold">
-                  {goodName(event.goodId)} demand ×
+                <span
+                  key={event.id}
+                  className={`mk-chip ${
+                    event.demandMultiplier >= 1
+                      ? "mk-chip--gold"
+                      : "mk-chip--grey"
+                  }`}
+                >
+                  {goodName(event.goodId)} ×
                   {event.demandMultiplier.toFixed(2)} · {event.remainingDays}{" "}
                   day{event.remainingDays === 1 ? "" : "s"} left
                 </span>
@@ -1041,50 +810,11 @@ const MarketHud = () => {
           )}
 
           <div className="grid grid-cols-1 gap-x-5 lg:grid-cols-[minmax(0,4fr)_minmax(0,6fr)]">
-            {/* Left column: pick what to trade and who with */}
             <div className="flex min-w-0 flex-col">
-              <Panel title="Goods" hint="Prices react to stock and demand.">
-                <div className="mk-list">
-                  {snapshot.goods.map((good) => {
-                    const isSelected = good.id === selectedGood.id;
-                    const demand = snapshot.demandMultipliers[good.id];
-
-                    return (
-                      <button
-                        key={good.id}
-                        type="button"
-                        aria-pressed={isSelected}
-                        onClick={() => handleGoodChange(good.id)}
-                        className="mk-row"
-                      >
-                        <ItemSlot letter={good.name} />
-                        <div className="mk-row-body">
-                          <div className="mk-row-top">
-                            <p className="mk-row-name mk-pixel">{good.name}</p>
-                            <p className="mk-price mk-pixel">
-                              {snapshot.prices[good.id]}
-                              <Coin />
-                            </p>
-                          </div>
-                          <p className="mk-row-meta">
-                            Market {snapshot.marketStock[good.id]} · In your bag{" "}
-                            {snapshot.player.inventory[good.id]}
-                          </p>
-                          {demand > 1 && (
-                            <div className="mk-chips">
-                              <span className="mk-chip mk-chip--red">
-                                Demand ×{demand.toFixed(2)}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </Panel>
-
-              <Panel title="Merchants" hint="Who you trade with.">
+              <Panel
+                title="Dealers"
+                hint="Each specialist only buys the loot categories they can resell."
+              >
                 <div className="mk-list">
                   {snapshot.merchants.map((merchant) => {
                     const isSelected = merchant.id === merchantId;
@@ -1099,7 +829,7 @@ const MarketHud = () => {
                         className="mk-row"
                         style={{ alignItems: "flex-start" }}
                       >
-                        <ItemSlot letter={merchant.name} round />
+                        <Slot round>{merchant.name.charAt(0)}</Slot>
                         <div className="mk-row-body">
                           <div className="mk-row-top">
                             <p className="mk-row-name mk-pixel">
@@ -1110,22 +840,18 @@ const MarketHud = () => {
                             </span>
                           </div>
                           <p className="mk-row-meta">
-                            Purse {merchant.balance} coins
+                            Purse {merchant.balance} coins · Buys{" "}
+                            {wants.map((good) => good.name).join(", ")}
                           </p>
                           <div className="mk-chips">
                             <span className="mk-chips-label">Stock</span>
-                            {renderGoodChips(merchant, snapshot.goods)}
-                          </div>
-                          <div className="mk-chips">
-                            <span className="mk-chips-label">Wants</span>
-                            {wants.length > 0 ? (
-                              wants.map((good) => (
-                                <span key={good.id} className="mk-chip mk-chip--gold">
-                                  {good.name} {merchant.wants[good.id]}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="mk-chip mk-chip--dim">Nothing</span>
+                            {renderGoodChips(
+                              merchant,
+                              snapshot.goods.filter(
+                                (good) =>
+                                  (merchant.wants[good.id] ?? 0) > 0 ||
+                                  merchant.inventory[good.id] > 0
+                              )
                             )}
                           </div>
                         </div>
@@ -1135,183 +861,207 @@ const MarketHud = () => {
                 </div>
               </Panel>
 
-              <Panel title="Economy" hint="Automatic market days · manual controls">
+              <Panel
+                title="Dealer prices"
+                hint="Prices move with dealer stock, demand and fresh headlines."
+              >
+                <div className="mk-list">
+                  {snapshot.goods.map((good) => (
+                    <div
+                      key={good.id}
+                      className="mk-row"
+                      style={{ cursor: "default" }}
+                    >
+                      <Slot>{good.name.charAt(0)}</Slot>
+                      <div className="mk-row-body">
+                        <div className="mk-row-top">
+                          <p className="mk-row-name mk-pixel">{good.name}</p>
+                          <p className="mk-price mk-pixel">
+                            {snapshot.prices[good.id]}
+                            <Coin />
+                          </p>
+                        </div>
+                        <p className="mk-row-meta">
+                          Dealer stock {snapshot.marketStock[good.id]} · Demand ×
+                          {snapshot.demandMultipliers[good.id].toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+
+              <Panel
+                title="Market controls"
+                hint="Advance the town and work the rumour mill."
+              >
                 <div className="mk-actions">
                   <ActionButton
                     title="Advance day"
-                    description="Run production, NPC trade and consumption on the server."
+                    description="Dealers restock, NPCs trade, and new headlines hit the row."
                     onClick={() => void advanceDay()}
                   />
                   <ActionButton
                     title="Fast-forward 7 days"
-                    description="Skip ahead a full week of server market days."
+                    description="Skip a week of dealer stock and demand shifts."
                     onClick={() => void fastForwardWeek()}
                   />
-                  <ActionButton
-                    title="Start grain rumour"
-                    description={
-                      grainRumourActive
-                        ? "A grain rumour is already spreading."
-                        : "Stir up demand for grain around town."
-                    }
-                    onClick={() => void startRumour()}
-                    disabled={grainRumourActive}
-                    rumour
-                  />
                 </div>
+
+                <div style={{ marginTop: 12 }}>
+                  <p className="mk-label mk-pixel">Rumour category</p>
+                  <div className="mk-chips">
+                    {snapshot.goods.map((good) => (
+                      <button
+                        key={good.id}
+                        type="button"
+                        className={`mk-chip ${
+                          rumourGood.id === good.id ? "mk-chip--gold" : ""
+                        }`}
+                        onClick={() => handleRumourChange(good.id)}
+                      >
+                        {good.name}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div style={{ marginTop: 10 }}>
+                    <ActionButton
+                      title={`Start ${rumourGood.name.toLowerCase()} rumour`}
+                      description={
+                        rumourActive
+                          ? `A ${rumourGood.name.toLowerCase()} rumour is already active.`
+                          : "Stir up dealer demand for this loot category."
+                      }
+                      onClick={() => void startRumour(rumourGood.id)}
+                      disabled={rumourActive}
+                      rumour
+                    />
+                  </div>
+                </div>
+              </Panel>
+
+              <Panel
+                title="Town headlines"
+                hint="Fresh headlines move dealer demand for two days."
+              >
+                {(data?.state.market.headlines ?? []).slice(0, 4).map((headline) => (
+                  <div
+                    key={headline.id}
+                    className="mk-note"
+                    style={{ marginBottom: 8 }}
+                  >
+                    <div className="mk-chips" style={{ marginTop: 0 }}>
+                      <span className="mk-chip">
+                        {CATEGORY_LABELS[headline.category] ?? headline.category}
+                      </span>
+                      <span className="mk-chip mk-chip--grey">
+                        Day {headline.day}
+                      </span>
+                    </div>
+                    <p style={{ margin: "6px 0 0" }}>{headline.text}</p>
+                  </div>
+                ))}
               </Panel>
             </div>
 
-            {/* Right column: the counter and the ledger */}
             <div className="flex min-w-0 flex-col">
               <Panel
-                title="Trade desk"
-                hint="Use the arrows or pick from the lists on the left."
+                title="Sell your haul"
+                hint={`Selling to ${selectedMerchant.name} · ${
+                  roleLabels[selectedMerchant.role]
+                }`}
               >
-                <div className="mk-desk-top">
-                  <DeskSlot
-                    label="Good"
-                    letter={selectedGood.name}
-                    title={selectedGood.name}
-                    detail={
-                      <span className="inline-flex items-center gap-1.5">
-                        {unitPrice} <Coin /> each
-                      </span>
-                    }
-                    prevLabel="Previous good"
-                    nextLabel="Next good"
-                    onPrev={() => cycleGood(-1)}
-                    onNext={() => cycleGood(1)}
-                  />
-                  <DeskSlot
-                    label="Merchant"
-                    letter={selectedMerchant.name}
-                    round
-                    title={selectedMerchant.name}
-                    detail={`${roleLabels[selectedMerchant.role]} · ${
-                      selectedMerchant.balance
-                    } coins`}
-                    prevLabel="Previous merchant"
-                    nextLabel="Next merchant"
-                    onPrev={() => cycleMerchant(-1)}
-                    onNext={() => cycleMerchant(1)}
-                  />
-                </div>
+                {playerItems.length === 0 ? (
+                  <p className="mk-empty">
+                    Your haul is empty. Win a storage unit and open the vault to
+                    find loot.
+                  </p>
+                ) : dealerItems.length === 0 ? (
+                  <p className="mk-empty">
+                    {selectedMerchant.name} is not buying anything in your haul
+                    right now. Pick another dealer or advance the day.
+                  </p>
+                ) : (
+                  <div className="mk-list">
+                    {dealerItems.map((item) => {
+                      const offer = offerFor(item, snapshot);
+                      const demand = demandCapacity(
+                        selectedMerchant,
+                        item.category
+                      );
+                      const canSell =
+                        demand > 0 && selectedMerchant.balance >= offer;
 
-                <div className="mk-qty">
-                  <div>
-                    <p className="mk-label mk-pixel">Quantity</p>
-                    <div className="mk-qty-ctl">
-                      <button
-                        type="button"
-                        className="mk-step"
-                        aria-label="Decrease quantity"
-                        onClick={() => setQuantity(Math.max(1, currentQty - 1))}
-                      >
-                        −
-                      </button>
-                      <NumberInput
-                        aria-label="Quantity"
-                        value={quantity}
-                        onChange={setQuantity}
-                        min={1}
-                        step={1}
-                        allowDecimal={false}
-                        hideControls
-                        styles={{
-                          root: { width: 92 },
-                          input: {
-                            background: "#fffdf0",
-                            border: `3px solid ${INK}`,
-                            borderRadius: 0,
-                            color: INK,
-                            fontFamily: pixelFont.style.fontFamily,
-                            fontSize: 22,
-                            height: 44,
-                            letterSpacing: "0.02em",
-                            textAlign: "center",
-                          },
-                        }}
-                      />
-                      <button
-                        type="button"
-                        className="mk-step"
-                        aria-label="Increase quantity"
-                        onClick={() => setQuantity(currentQty + 1)}
-                      >
-                        +
-                      </button>
-                    </div>
+                      return (
+                        <div
+                          key={item.id}
+                          className="mk-row"
+                          style={{ cursor: "default", alignItems: "flex-start" }}
+                        >
+                          <Slot large>{item.icon}</Slot>
+                          <div className="mk-row-body">
+                            <div className="mk-row-top">
+                              <p className="mk-row-name mk-pixel">{item.name}</p>
+                              <p className="mk-price mk-pixel">
+                                {offer}
+                                <Coin />
+                              </p>
+                            </div>
+                            <p className="mk-row-meta">
+                              {CATEGORY_LABELS[item.category]} ·{" "}
+                              {RARITY_LABELS[item.rarity]} ·{" "}
+                              {itemConditionLabel(item.condition)} · lot #
+                              {item.sourceListing}
+                            </p>
+                            <div className="mk-chips">
+                              <span className="mk-chip mk-chip--green">
+                                Dealer demand {demand}
+                              </span>
+                              <span
+                                className={`mk-chip ${
+                                  canSell ? "mk-chip--gold" : "mk-chip--dim"
+                                }`}
+                              >
+                                {canSell
+                                  ? "Ready to sell"
+                                  : "Dealer cannot take it"}
+                              </span>
+                            </div>
+                            <div style={{ marginTop: 8 }}>
+                              <button
+                                type="button"
+                                className="mk-btn mk-btn--sm"
+                                disabled={busy || !canSell}
+                                onClick={() =>
+                                  void sellItem(item.id, selectedMerchant.id)
+                                }
+                              >
+                                Sell to {selectedMerchant.name.split(" ")[0]}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-
-                  <div className="mk-ticket">
-                    <p className="mk-ticket-line">
-                      {currentQty} × {selectedGood.name} @ {unitPrice} coins
-                    </p>
-                    <p className="mk-ticket-total mk-pixel">
-                      {buyCost}
-                      <Coin />
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mk-panes">
-                  <TradePane
-                    kind="buy"
-                    counterpart={selectedMerchant.name}
-                    statLabel="Stock for sale"
-                    statValue={buyStock}
-                    maxLabel="Max you can buy"
-                    max={maxBuy}
-                    onMax={() => setQuantity(maxBuy)}
-                    moneyLabel="You pay"
-                    moneyAmount={buyCost}
-                    hasQuantity={tradeQuantity > 0}
-                    purseAfter={snapshot.player.balance - buyCost}
-                    actionLabel={`Buy ${selectedGood.name}`}
-                    onAction={() =>
-                      void buyGood(
-                        selectedGood.id,
-                        tradeQuantity,
-                        selectedMerchant.id
-                      )
-                    }
-                    explanation={buyExplanation}
-                  />
-                  <TradePane
-                    kind="sell"
-                    counterpart={selectedMerchant.name}
-                    statLabel="Remaining demand"
-                    statValue={sellDemand}
-                    maxLabel="Max you can sell"
-                    max={maxSell}
-                    onMax={() => setQuantity(maxSell)}
-                    moneyLabel="You earn"
-                    moneyAmount={sellRevenue}
-                    hasQuantity={tradeQuantity > 0}
-                    purseAfter={snapshot.player.balance + sellRevenue}
-                    actionLabel={`Sell ${selectedGood.name}`}
-                    onAction={() =>
-                      void sellGood(
-                        selectedGood.id,
-                        tradeQuantity,
-                        selectedMerchant.id
-                      )
-                    }
-                    explanation={sellExplanation}
-                  />
-                </div>
+                )}
 
                 <p className="mk-footnote">
-                  Buy moves goods from the merchant to you. Sell moves goods
-                  from you to the merchant.
+                  Selling moves one item into the dealer's stock. They only pay
+                  for categories they actually want, and their purse limits each
+                  deal.
                 </p>
               </Panel>
 
-              <Panel title="Market ledger" hint="Most recent 10 trades.">
+              <Panel
+                title="Market ledger"
+                hint="Most recent dealer and player trades."
+              >
                 {latestTrades.length === 0 ? (
                   <p className="mk-empty">
-                    No trades yet. Advance a day to let the merchants trade.
+                    No trades yet. Advance a day to let the dealers trade with
+                    each other.
                   </p>
                 ) : (
                   <ol className="mk-ledger">

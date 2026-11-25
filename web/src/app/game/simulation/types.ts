@@ -1,8 +1,23 @@
-export const GOOD_IDS = ["GRAIN", "WOOD", "TOOLS"] as const;
+/**
+ * Storage loot categories. These ids are shared by the auction item catalogue
+ * and the dealer economy so a revealed item can always be sold as one unit of
+ * its category without a translation layer.
+ */
+export const GOOD_IDS = [
+  "electronics",
+  "furniture",
+  "antiques",
+  "tools",
+  "collectibles",
+  "misc",
+] as const;
 
 export type GoodId = (typeof GOOD_IDS)[number];
 
-export type MerchantRole = "FARMER" | "LUMBERJACK" | "BLACKSMITH";
+export type MerchantRole =
+  | "PAWNBROKER"
+  | "FURNITURE_DEALER"
+  | "SALVAGE_BUYER";
 
 export type Inventory = Record<GoodId, number>;
 
@@ -164,6 +179,8 @@ export interface SimulationState {
  * authoritative copy of each.
  */
 export interface GameEconomyState {
+  /** Bumped when the loot-category schema changes so old saves are rebuilt. */
+  version: 2;
   playerInventory: Inventory;
   merchants: MerchantState[];
   events: DemandShockEvent[];

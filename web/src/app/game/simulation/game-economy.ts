@@ -1,16 +1,21 @@
 import {
+  getPrice,
   getSnapshot,
   playerBuy,
   playerSell,
+  playerSellAtPrice,
   tick,
-  triggerGrainRumour,
+  triggerDemandEvent,
+  triggerLootRumour,
 } from "./economy";
 import {
+  GOODS,
   MERCHANT_DEFINITIONS,
   PLAYER_STALL,
   PLAYER_STARTING_INVENTORY,
   createInventory,
 } from "./goods";
+import { GOOD_IDS } from "./types";
 import type {
   GameEconomyState,
   GoodId,
@@ -19,6 +24,7 @@ import type {
   SimulationState,
   WorldSnapshot,
 } from "./types";
+import { lootSaleValue, type ItemCondition } from "../auction/types";
 
 /**
  * Minimal shape shared by the persisted player state and this bridge. Keeping
@@ -53,14 +59,15 @@ function cloneMerchants(merchants: MerchantState[]): MerchantState[] {
 }
 
 function totalInventory(accounts: Array<{ inventory: Inventory }>): Inventory {
-  return accounts.reduce(
-    (totals, account) => ({
-      GRAIN: totals.GRAIN + account.inventory.GRAIN,
-      WOOD: totals.WOOD + account.inventory.WOOD,
-      TOOLS: totals.TOOLS + account.inventory.TOOLS,
-    }),
-    createInventory()
-  );
+  const totals = createInventory();
+
+  for (const account of accounts) {
+    for (const goodId of GOOD_IDS) {
+      totals[goodId] += account.inventory[goodId];
+    }
+  }
+
+  return totals;
 }
 
 function merchantDefinitions(): MerchantState[] {
@@ -87,6 +94,7 @@ export function createInitialEconomy(
   const accounts = [...merchants, { inventory }];
 
   return {
+    version: 2,
     playerInventory: inventory,
     merchants,
     events: [],
@@ -107,6 +115,7 @@ function isCompleteEconomy(
 ): economy is GameEconomyState {
   return Boolean(
     economy &&
+      economy.version === 2 &&
       Array.isArray(economy.merchants) &&
       economy.merchants.length > 0 &&
       economy.playerInventory &&
@@ -145,7 +154,7 @@ function toSimulationState(state: EconomyHostState): SimulationState {
     merchants,
     player: {
       id: "player",
-      name: "Market Trader",
+      name: "Storage Scavenger",
       balance: state.balance,
       inventory: cloneInventory(economy.playerInventory),
       stall: { ...PLAYER_STALL },
@@ -174,6 +183,7 @@ function applySimulationState(
   state.day = simulation.day;
   state.balance = simulation.player.balance;
   state.economy = {
+    version: 2,
     playerInventory: cloneInventory(simulation.player.inventory),
     merchants: cloneMerchants(simulation.merchants),
     events: simulation.events.map((event) => ({ ...event })),
@@ -206,10 +216,132 @@ export function advanceEconomyDays(
   applySimulationState(state, simulation);
 }
 
-export function startGrainRumour(state: EconomyHostState): void {
+export type MarketHeadlineInput = {
+  goodId: GoodId;
+  label: string;
+  changePct: number;
+};
+
+/**
+ * Turn fresh town headlines into short demand events. This keeps the printed
+ * news and the dealer prices tied to the same economy instead of running two
+ * unrelated market systems.
+ */
+export function applyMarketHeadlines(
+  state: EconomyHostState,
+  headlines: MarketHeadlineInput[]
+): void {
+  if (headlines.length === 0) {
+    return;
+  }
+
   const simulation = toSimulationState(state);
-  triggerGrainRumour(simulation);
+  let changed = false;
+
+  for (const headline of headlines) {
+    if (!headline.changePct) {
+      continue;
+    }
+
+    const demandMultiplier = Math.max(
+      0.6,
+      Math.min(1.8, 1 + headline.changePct / 100)
+    );
+
+    if (demandMultiplier === 1) {
+      continue;
+    }
+
+    triggerDemandEvent(simulation, headline.goodId, {
+      durationDays: 2,
+      demandMultiplier,
+      label: headline.label,
+    });
+    changed = true;
+  }
+
+  if (changed) {
+    applySimulationState(state, simulation);
+  }
+}
+
+export function startLootRumour(
+  state: EconomyHostState,
+  goodId: GoodId
+): void {
+  const simulation = toSimulationState(state);
+  triggerLootRumour(simulation, goodId);
   applySimulationState(state, simulation);
+}
+
+/**
+ * @deprecated Crop-era bridge kept for compatibility with older scripts.
+ * Use startLootRumour(state, goodId).
+ */
+export function startGrainRumour(state: EconomyHostState): void {
+  startLootRumour(state, "collectibles");
+}
+
+export type LootSaleResult = {
+  price: number;
+  buyerId: string;
+  buyerName: string;
+};
+
+/**
+ * Sell one revealed loot item to a specialist dealer. The item is converted
+ * into one category unit, sold through the normal playerSellAtPrice validation,
+ * and then removed from the haul by the caller.
+ */
+export function sellLootItem(
+  state: EconomyHostState,
+  goodId: GoodId,
+  baseValue: number,
+  condition: ItemCondition,
+  buyerId?: string
+): LootSaleResult {
+  const good = GOODS[goodId];
+
+  if (!good) {
+    throw new Error(`Unknown loot category: ${String(goodId)}`);
+  }
+
+  const simulation = toSimulationState(state);
+  const unitPrice = lootSaleValue(
+    { baseValue, condition },
+    getPrice(simulation, goodId),
+    good.basePrice
+  );
+
+  // Loot enters the market from outside the dealer loop. Increasing the
+  // opening stock total by the same amount keeps the simulation conservation
+  // checks honest while the player's temporary unit is sold immediately.
+  simulation.player.inventory[goodId] += 1;
+  simulation.initialStockTotals[goodId] += 1;
+
+  playerSellAtPrice(simulation, goodId, 1, unitPrice, buyerId);
+
+  const trade = [...simulation.history]
+    .reverse()
+    .find(
+      (entry) => entry.type === "TRADE" && entry.sellerId === "player"
+    );
+
+  if (!trade || trade.type !== "TRADE") {
+    throw new Error("The dealer trade was not recorded.");
+  }
+
+  const buyer = simulation.merchants.find(
+    (merchant) => merchant.id === trade.buyerId
+  );
+
+  applySimulationState(state, simulation);
+
+  return {
+    price: trade.totalPrice,
+    buyerId: trade.buyerId,
+    buyerName: buyer?.name ?? trade.buyerId,
+  };
 }
 
 export function buyGood(

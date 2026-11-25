@@ -40,10 +40,10 @@ type AuctionContextValue = {
   dismissError: () => void;
   placeBid: (lotId: string, amount: number) => Promise<boolean>;
   revealLot: (lotId: string) => Promise<boolean>;
-  sellItem: (itemId: string) => Promise<boolean>;
+  sellItem: (itemId: string, buyerId?: string) => Promise<boolean>;
   advanceDay: () => Promise<boolean>;
   fastForwardWeek: () => Promise<boolean>;
-  startRumour: () => Promise<boolean>;
+  startRumour: (goodId: GoodId) => Promise<boolean>;
   buyGood: (
     goodId: GoodId,
     quantity: number,
@@ -267,11 +267,11 @@ export const AuctionProvider = ({
   );
 
   const sellItem = useCallback(
-    (itemId: string) =>
+    (itemId: string, buyerId?: string) =>
       runAction(
-        { action: "sell", itemId },
-        "Finding a buyer…",
-        "Sold. Coins added to your balance."
+        { action: "sell", itemId, buyerId },
+        "Finding a dealer…",
+        "Deal done. Coins added to your balance."
       ),
     [runAction]
   );
@@ -297,11 +297,11 @@ export const AuctionProvider = ({
   );
 
   const startRumour = useCallback(
-    () =>
+    (goodId: GoodId) =>
       runAction(
-        { action: "start-rumour" },
-        "Spreading a rumour…",
-        "Grain demand is rising."
+        { action: "start-rumour", goodId },
+        "Spreading a storage-lot rumour…",
+        "Dealer demand is rising."
       ),
     [runAction]
   );

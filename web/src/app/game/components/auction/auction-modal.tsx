@@ -1006,7 +1006,6 @@ import {
   RARITY_COLORS,
   RARITY_LABELS,
   itemConditionLabel,
-  saleValue,
   type InventoryItem,
   type StorageLot,
 } from "../../auction/types";
@@ -1014,6 +1013,7 @@ import {
   formatCoins,
   formatCountdown,
   haulValue,
+  itemDealerOffer,
   lotPhaseLabel,
   lotStatusColor,
   lotStatusLabel,
@@ -2010,20 +2010,15 @@ function LotDetail({ lot, now }: { lot: StorageLot; now: number }) {
 
 function ItemCard({
   item,
-  multipliers,
+  value,
   busy,
   onSell,
 }: {
   item: InventoryItem;
-  multipliers: Record<string, number>;
+  value: number;
   busy: boolean;
   onSell: () => void;
 }) {
-  const value = saleValue(
-    item,
-    multipliers as Parameters<typeof saleValue>[1]
-  );
-
   return (
     <div className="ah-item" style={rarityVars(item)}>
       <div className="ah-item-top">
@@ -2048,7 +2043,7 @@ function ItemCard({
       </div>
       <div className="ah-item-foot">
         <div>
-          <p className="ah-label">Estimated sale</p>
+          <p className="ah-label">Dealer offer</p>
           <p className="ah-worth ah-pixel">
             {formatCoins(value)}
             <Coin />
@@ -2060,7 +2055,7 @@ function ItemCard({
           onClick={onSell}
           className="ah-btn ah-btn--sm"
         >
-          Sell to Marla
+          Sell to dealer
         </button>
       </div>
     </div>
@@ -2068,19 +2063,16 @@ function ItemCard({
 }
 
 function HaulTab({ onGoToLots }: { onGoToLots: () => void }) {
-  const { data, busy, sellItem } = useAuction();
+  const { data, economy, busy, sellItem } = useAuction();
   const inventory = data?.state.inventory ?? [];
-  const multipliers = data?.state.market.multipliers ?? {};
   const sorted = useMemo(
     () =>
       [...inventory].sort(
-        (a, b) =>
-          saleValue(b, multipliers as Parameters<typeof saleValue>[1]) -
-          saleValue(a, multipliers as Parameters<typeof saleValue>[1])
+        (a, b) => itemDealerOffer(b, economy) - itemDealerOffer(a, economy)
       ),
-    [inventory, multipliers]
+    [inventory, economy]
   );
-  const total = haulValue(sorted, multipliers);
+  const total = haulValue(sorted, economy);
   const shownTotal = useTweened(total);
 
   if (sorted.length === 0) {
@@ -2091,7 +2083,8 @@ function HaulTab({ onGoToLots }: { onGoToLots: () => void }) {
         </h3>
         <p className="ah-text">
           Win a storage lot, open the vault, and the contents will appear here.
-          Marla buys anything from the haul for in-game coins.
+          Take the loot to a specialist dealer on Dealer Row and sell what they
+          actually want.
         </p>
         <button
           type="button"
@@ -2114,7 +2107,7 @@ function HaulTab({ onGoToLots }: { onGoToLots: () => void }) {
           </p>
         </div>
         <div style={{ textAlign: "right" }}>
-          <p className="ah-label">Estimated value</p>
+          <p className="ah-label">Best dealer offer</p>
           <p className="ah-worth ah-pixel" style={{ fontSize: 28 }}>
             {formatCoins(shownTotal)}
             <Coin />
@@ -2127,7 +2120,7 @@ function HaulTab({ onGoToLots }: { onGoToLots: () => void }) {
           <ItemCard
             key={item.id}
             item={item}
-            multipliers={multipliers}
+            value={itemDealerOffer(item, economy)}
             busy={busy}
             onSell={() => void sellItem(item.id)}
           />
@@ -2142,7 +2135,7 @@ function HaulTab({ onGoToLots }: { onGoToLots: () => void }) {
 /* -------------------------------------------------------------------------- */
 
 function LedgerTab() {
-  const { data, busy, advanceDay } = useAuction();
+  const { data, economy, busy, advanceDay } = useAuction();
   const state = data?.state;
 
   if (!state) {
@@ -2167,34 +2160,45 @@ function LedgerTab() {
           </button>
         </div>
         <p className="ah-text">
-          Advancing the day rerolls item-category multipliers and prints new
-          market headlines. Your current lots keep their clocks.
+          Advancing the day runs dealer restocking, NPC deals, consumption and
+          fresh town headlines. Headlines become short demand events for the
+          loot categories they mention.
         </p>
 
         <div className="ah-mults">
-          {Object.entries(state.market.multipliers).map(([category, value]) => (
-            <div key={category} className="ah-mult">
-              <p className="ah-label">
-                {CATEGORY_LABELS[category as keyof typeof CATEGORY_LABELS]}
-              </p>
-              <p
-                className={`ah-mult-val ah-pixel ${
-                  value >= 1 ? "ah-up" : "ah-down"
-                }`}
-              >
-                {value >= 1 ? "▲" : "▼"} ×{value.toFixed(2)}
-              </p>
-            </div>
-          ))}
+          {economy?.goods.map((good) => {
+            const demand = economy.demandMultipliers[good.id];
+            return (
+              <div key={good.id} className="ah-mult">
+                <p className="ah-label">{good.name}</p>
+                <p className="ah-mult-val ah-pixel">
+                  {formatCoins(economy.prices[good.id])}
+                  <Coin />
+                </p>
+                <p
+                  className={`ah-meta ${
+                    demand >= 1 ? "ah-up" : "ah-down"
+                  }`}
+                >
+                  Demand ×{demand.toFixed(2)}
+                </p>
+              </div>
+            );
+          })}
         </div>
       </Panel>
 
       <Panel title="Market headlines" tone="lo">
+        <p className="ah-text" style={{ marginTop: 0 }}>
+          Fresh headlines move dealer demand for two days. Rumours work the same
+          way but can be started from Dealer Row.
+        </p>
         {state.market.headlines.map((headline) => (
           <div key={headline.id} className="ah-clip">
             <div className="ah-clip-top">
               <Chip>
-                {CATEGORY_LABELS[headline.category]} · D{headline.day}
+                {CATEGORY_LABELS[headline.category] ?? headline.category} · D
+                {headline.day}
               </Chip>
               {headline.changePct !== 0 && (
                 <span
@@ -2245,6 +2249,7 @@ export default function AuctionHouseModal() {
   const {
     profile,
     data,
+    economy,
     loading,
     error,
     feedback,
@@ -2266,9 +2271,7 @@ export default function AuctionHouseModal() {
     lots[0] ??
     null;
   const held = lots.reduce((total, lot) => total + lot.playerBid, 0);
-  const haulTotal = state
-    ? haulValue(state.inventory, state.market.multipliers)
-    : 0;
+  const haulTotal = state ? haulValue(state.inventory, economy) : 0;
   const activeCount = lots.filter(
     (lot) => lot.status === "preview" || lot.status === "live"
   ).length;

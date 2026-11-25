@@ -40,10 +40,14 @@ type LogInput =
   | Omit<ShortageLogEntry, "id" | "timestamp">
   | Omit<EventLogEntry, "id" | "timestamp">;
 
-export interface GrainRumourOptions {
+export interface DemandRumourOptions {
   durationDays?: number;
   demandMultiplier?: number;
+  label?: string;
 }
+
+/** @deprecated Crop-era name kept for older verification scripts. */
+export type GrainRumourOptions = DemandRumourOptions;
 
 function timestampFor(state: SimulationState, day: number): string {
   const minuteOfDay = state.history.length % MINUTES_PER_DAY;
@@ -100,14 +104,15 @@ function calculateMoneySupply(accounts: Account[]): number {
 }
 
 function calculateStockTotals(accounts: Account[]): Inventory {
-  return accounts.reduce(
-    (totals, account) => ({
-      GRAIN: totals.GRAIN + account.inventory.GRAIN,
-      WOOD: totals.WOOD + account.inventory.WOOD,
-      TOOLS: totals.TOOLS + account.inventory.TOOLS,
-    }),
-    createInventory()
-  );
+  const totals = createInventory();
+
+  for (const account of accounts) {
+    for (const goodId of GOOD_IDS) {
+      totals[goodId] += account.inventory[goodId];
+    }
+  }
+
+  return totals;
 }
 
 function findMerchant(
@@ -368,7 +373,7 @@ export function createInitialWorld(): SimulationState {
 
   const player: PlayerState = {
     id: "player",
-    name: "Market Trader",
+    name: "Storage Scavenger",
     balance: PLAYER_STARTING_BALANCE,
     inventory: createInventory(PLAYER_STARTING_INVENTORY),
     stall: { ...PLAYER_STALL },
@@ -430,18 +435,15 @@ export function fastForwardSevenDays(state: SimulationState): WorldSnapshot {
   return fastForwardDays(state, 7);
 }
 
-export function triggerGrainRumour(
+export function triggerDemandEvent(
   state: SimulationState,
-  options: GrainRumourOptions = {}
+  goodId: GoodId,
+  options: DemandRumourOptions = {}
 ): DemandShockEvent {
-  const activeRumour = state.events.find(
-    (event) => event.goodId === "GRAIN" && event.remainingDays > 0
-  );
+  const good = GOODS[goodId];
 
-  if (activeRumour) {
-    throw new Error(
-      `A grain demand rumour is already active (${activeRumour.id}).`
-    );
+  if (!good) {
+    throw new Error(`Unknown loot category: ${String(goodId)}`);
   }
 
   const durationDays = options.durationDays ?? 2;
@@ -449,20 +451,25 @@ export function triggerGrainRumour(
 
   if (!Number.isInteger(durationDays) || durationDays <= 0) {
     throw new Error(
-      "Rumour duration must be a positive integer number of days."
+      "Demand event duration must be a positive integer number of days."
     );
   }
 
-  if (!Number.isFinite(demandMultiplier) || demandMultiplier <= 1) {
-    throw new Error("Rumour demand multiplier must be greater than 1.");
+  if (
+    !Number.isFinite(demandMultiplier) ||
+    demandMultiplier <= 0 ||
+    demandMultiplier === 1
+  ) {
+    throw new Error("Demand multiplier must be positive and different from 1.");
   }
 
   const event: DemandShockEvent = {
-    id: `grain-rumour-${state.events.length + 1}`,
+    id: `loot-demand-${goodId}-${state.events.length + 1}`,
     type: "DEMAND_SHOCK",
-    goodId: "GRAIN",
+    goodId,
     label:
-      "Rumour: a poor grain harvest is coming, so grain demand is surging.",
+      options.label ??
+      `Rumour: dealers are chasing ${good.name.toLowerCase()} after a storage-unit tip.`,
     demandMultiplier,
     startedAtDay: state.day,
     endsAtDay: state.day + durationDays,
@@ -482,6 +489,42 @@ export function triggerGrainRumour(
 
   assertValidState(state);
   return event;
+}
+
+export function triggerLootRumour(
+  state: SimulationState,
+  goodId: GoodId,
+  options: DemandRumourOptions = {}
+): DemandShockEvent {
+  const good = GOODS[goodId];
+
+  if (!good) {
+    throw new Error(`Unknown loot category: ${String(goodId)}`);
+  }
+
+  const activeRumour = state.events.find(
+    (event) => event.goodId === goodId && event.remainingDays > 0
+  );
+
+  if (activeRumour) {
+    throw new Error(
+      `A ${good.name.toLowerCase()} demand rumour is already active (${activeRumour.id}).`
+    );
+  }
+
+  return triggerDemandEvent(state, goodId, options);
+}
+
+/**
+ * @deprecated Crop-era compatibility shim. New code should call
+ * triggerLootRumour(state, goodId). Kept so older scripts do not need to be
+ * rewritten before they are retired.
+ */
+export function triggerGrainRumour(
+  state: SimulationState,
+  options: GrainRumourOptions = {}
+): DemandShockEvent {
+  return triggerLootRumour(state, "collectibles", options);
 }
 
 export function playerBuy(
@@ -536,16 +579,18 @@ export function playerBuy(
   return getSnapshot(state);
 }
 
-export function playerSell(
+export function playerSellAtPrice(
   state: SimulationState,
   goodId: GoodId,
   quantity: number,
+  unitPrice: number,
   buyerId?: string
 ): WorldSnapshot {
   if (!GOODS[goodId]) {
     throw new Error(`Unknown good: ${String(goodId)}`);
   }
   assertValidQuantity(quantity);
+  assertValidQuantity(unitPrice, "Unit price");
 
   if (state.player.inventory[goodId] < quantity) {
     throw new Error(
@@ -553,7 +598,6 @@ export function playerSell(
     );
   }
 
-  const unitPrice = getPrice(state, goodId);
   const totalPrice = quantity * unitPrice;
   let buyer: MerchantState;
 
@@ -580,7 +624,7 @@ export function playerSell(
 
     if (!candidate) {
       throw new Error(
-        `No merchant wants ${quantity} ${goodId} at the current price of ${unitPrice}.`
+        `No merchant wants ${quantity} ${goodId} at the current offer of ${unitPrice}.`
       );
     }
 
@@ -590,6 +634,21 @@ export function playerSell(
   executeTrade(state, buyer, state.player, goodId, quantity, unitPrice);
   assertValidState(state);
   return getSnapshot(state);
+}
+
+export function playerSell(
+  state: SimulationState,
+  goodId: GoodId,
+  quantity: number,
+  buyerId?: string
+): WorldSnapshot {
+  return playerSellAtPrice(
+    state,
+    goodId,
+    quantity,
+    getPrice(state, goodId),
+    buyerId
+  );
 }
 
 export function validateState(state: SimulationState): string[] {
@@ -738,7 +797,7 @@ export function validateState(state: SimulationState): string[] {
     }
     if (
       !Number.isFinite(event.demandMultiplier) ||
-      event.demandMultiplier <= 1
+      event.demandMultiplier <= 0
     ) {
       errors.push(`Event ${event.id} has an invalid demand multiplier.`);
     }

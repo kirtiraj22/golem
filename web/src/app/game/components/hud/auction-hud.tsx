@@ -28,7 +28,7 @@ const panelStyle: React.CSSProperties = {
 };
 
 const AuctionHud = () => {
-  const { data, loading, error, openAuction } = useAuction();
+  const { data, economy, loading, error, openAuction } = useAuction();
   const state = data?.state;
   const active = state
     ? state.lots.filter(
@@ -46,9 +46,7 @@ const AuctionHud = () => {
         (lot) => lot.status === "won" && lot.revealStatus === "ready"
       ).length
     : 0;
-  const haul = state
-    ? haulValue(state.inventory, state.market.multipliers)
-    : 0;
+  const haul = state ? haulValue(state.inventory, economy) : 0;
 
   let statusLine = "OPENING LEDGER…";
 
