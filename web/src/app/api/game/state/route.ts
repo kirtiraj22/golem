@@ -7,7 +7,7 @@ import {
   loadGameState,
 } from "~/lib/game/state";
 import type { GameAction } from "~/app/game/auction/types";
-import type { GoodId } from "~/app/game/simulation/types";
+import { GOOD_IDS, type GoodId } from "~/app/game/simulation/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -86,8 +86,15 @@ export async function POST(request: Request) {
       action = { action: "advance-day", expectedDay };
     } else if (payload.action === "fast-forward-week") {
       action = { action: "fast-forward-week", expectedDay };
-    } else if (payload.action === "start-rumour") {
-      action = { action: "start-rumour" };
+    } else if (
+      payload.action === "start-rumour" &&
+      typeof payload.goodId === "string" &&
+      (GOOD_IDS as readonly string[]).includes(payload.goodId)
+    ) {
+      action = {
+        action: "start-rumour",
+        goodId: payload.goodId as GoodId,
+      };
     } else if (
       payload.action === "bid" &&
       typeof payload.lotId === "string" &&
@@ -101,7 +108,12 @@ export async function POST(request: Request) {
     } else if (payload.action === "reveal" && typeof payload.lotId === "string") {
       action = { action: "reveal", lotId: payload.lotId };
     } else if (payload.action === "sell" && typeof payload.itemId === "string") {
-      action = { action: "sell", itemId: payload.itemId };
+      action = {
+        action: "sell",
+        itemId: payload.itemId,
+        buyerId:
+          typeof payload.buyerId === "string" ? payload.buyerId : undefined,
+      };
     } else if (
       payload.action === "buy-good" &&
       typeof payload.goodId === "string" &&
