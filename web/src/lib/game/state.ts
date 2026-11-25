@@ -4,18 +4,20 @@ import type { PlayerProfile } from "~/lib/auth/types";
 import { createInitialGameState, createStorageLot, nextMarketDay } from "./generator";
 import {
   advanceEconomyDay,
+  applyMarketHeadlines,
   buyGood as buyMarketGood,
   ensureEconomyState,
   sellGood as sellMarketGood,
-  startGrainRumour,
+  sellLootItem,
+  startLootRumour,
+  type MarketHeadlineInput,
 } from "~/app/game/simulation/game-economy";
-import {
-  saleValue,
-  type GameAction,
-  type PublicPlayerGameState,
-  type PlayerGameState,
-  type ServerStorageLot,
-  type StorageLot,
+import type {
+  GameAction,
+  PublicPlayerGameState,
+  PlayerGameState,
+  ServerStorageLot,
+  StorageLot,
 } from "~/app/game/auction/types";
 
 const MIN_ACTIVE_LOTS = 3;
@@ -36,6 +38,42 @@ type SaveRow = {
   state: PlayerGameState;
   version: number;
 };
+
+function isSimulationStateError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.startsWith("Invalid simulation state")
+  );
+}
+
+function runMarketAction<T>(action: () => T): T {
+  try {
+    return action();
+  } catch (error) {
+    if (isSimulationStateError(error)) {
+      throw error;
+    }
+
+    throw new GameActionError(
+      error instanceof Error
+        ? error.message
+        : "That market action could not be completed."
+    );
+  }
+}
+
+function freshMarketHeadlines(
+  headlines: PlayerGameState["market"]["headlines"],
+  day: number
+): MarketHeadlineInput[] {
+  return headlines
+    .filter((headline) => headline.day === day && headline.changePct !== 0)
+    .map((headline) => ({
+      goodId: headline.category,
+      label: headline.text,
+      changePct: headline.changePct,
+    }));
+}
 
 function cloneState<T>(state: T): T {
   return JSON.parse(JSON.stringify(state)) as T;
@@ -425,16 +463,24 @@ function applyAction(
     }
 
     const item = state.inventory[itemIndex];
-    const price = saleValue(item, state.market.multipliers);
+    const sale = runMarketAction(() =>
+      sellLootItem(
+        state,
+        item.category,
+        item.baseValue,
+        item.condition,
+        action.buyerId
+      )
+    );
+
     state.inventory.splice(itemIndex, 1);
-    state.balance += price;
     state.reputation += 1;
     addHistory(
       state,
       {
         type: "SALE",
-        amount: price,
-        message: `Sold ${item.name} (${item.condition}) to Marla for ${price}c.`,
+        amount: sale.price,
+        message: `Sold ${item.name} (${item.condition}) to ${sale.buyerName} for ${sale.price}c.`,
       },
       now
     );
@@ -449,15 +495,20 @@ function applyAction(
       );
     }
 
-    // Production, autonomous NPC trading, consumption and event aging all run
-    // here, once, on the server. Clients never advance their own worlds.
+    // Dealer restocking, autonomous NPC trading, consumption and event aging
+    // all run here, once, on the server. Clients never advance their own
+    // worlds. Fresh headlines are then applied as short demand events.
     advanceEconomyDay(state);
     state.market = nextMarketDay(state.market, state.day);
+    applyMarketHeadlines(
+      state,
+      freshMarketHeadlines(state.market.headlines, state.day)
+    );
     addHistory(
       state,
       {
         type: "DAY",
-        message: `Day ${state.day} begins. Market prices have shifted; check the headlines.`,
+        message: `Day ${state.day} begins. Dealers have restocked; check the headlines for demand shifts.`,
       },
       now
     );
@@ -475,13 +526,17 @@ function applyAction(
     for (let index = 0; index < 7; index += 1) {
       advanceEconomyDay(state);
       state.market = nextMarketDay(state.market, state.day);
+      applyMarketHeadlines(
+        state,
+        freshMarketHeadlines(state.market.headlines, state.day)
+      );
     }
 
     addHistory(
       state,
       {
         type: "DAY",
-        message: `Seven market days pass. Day ${state.day} begins with fresh prices.`,
+        message: `Seven market days pass. Day ${state.day} begins with fresh dealer demand.`,
       },
       now
     );
@@ -489,17 +544,21 @@ function applyAction(
   }
 
   if (action.action === "start-rumour") {
-    startGrainRumour(state);
+    runMarketAction(() => startLootRumour(state, action.goodId));
     return true;
   }
 
   if (action.action === "buy-good") {
-    buyMarketGood(state, action.goodId, action.quantity, action.sellerId);
+    runMarketAction(() =>
+      buyMarketGood(state, action.goodId, action.quantity, action.sellerId)
+    );
     return true;
   }
 
   if (action.action === "sell-good") {
-    sellMarketGood(state, action.goodId, action.quantity, action.buyerId);
+    runMarketAction(() =>
+      sellMarketGood(state, action.goodId, action.quantity, action.buyerId)
+    );
     return true;
   }
 

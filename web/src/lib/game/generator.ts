@@ -11,6 +11,7 @@ import {
 import {
   CATEGORY_LABELS,
   CONDITION_MULTIPLIERS,
+  ITEM_CATEGORIES,
   type GameMarket,
   type InventoryItem,
   type ItemCategory,
@@ -134,7 +135,7 @@ function previewClues(
   const categories = Array.from(
     new Set(contents.map((item) => item.category))
   );
-  const category = categories.length > 0 ? pick(rng, categories) : "curios";
+  const category = categories.length > 0 ? pick(rng, categories) : "misc";
   const best = contents.reduce<InventoryItem | null>((current, item) => {
     if (!current) return item;
     const order: ItemRarity[] = ["common", "uncommon", "rare", "legendary"];
@@ -233,11 +234,11 @@ export function createInitialMarket(day: number): GameMarket {
     refreshedDay: day,
     multipliers: {
       electronics: 1,
-      collectibles: 1,
-      tools: 1,
       furniture: 1,
-      fashion: 1,
-      curios: 1,
+      antiques: 1,
+      tools: 1,
+      collectibles: 1,
+      misc: 1,
     },
     headlines: [
       {
@@ -330,24 +331,24 @@ const HEADLINE_TEMPLATES: Record<
       "Buyers are holding off on big pieces this week.",
     ],
   },
-  fashion: {
+  antiques: {
     up: [
-      "A touring band's wardrobe auction lifts leather and denim.",
-      "Resale week begins and vintage accessories jump.",
-    ],
-    down: [
-      "Last season's stock appears in every stall at once.",
-      "Rain keeps the fashion crowd indoors.",
-    ],
-  },
-  curios: {
-    up: [
-      "A museum curator is quietly buying oddities.",
-      "Tourists arrive for the riverside folk festival.",
+      "A museum curator is quietly buying oddities and old furniture.",
+      "Tourists arrive for the riverside heritage fair.",
     ],
     down: [
       "The antique fair was cancelled and sellers are stuck.",
-      "Everyone seems to be clearing out attic clutter.",
+      "Everyone seems to be clearing out attic clutter at once.",
+    ],
+  },
+  misc: {
+    up: [
+      "A picker is paying cash for unlabelled boxes and odd little treasures.",
+      "The weekend flea market is short on curios and small valuables.",
+    ],
+    down: [
+      "A house clearance floods the stalls with unsorted bric-a-brac.",
+      "Buyers are walking past anything that needs a second look.",
     ],
   },
 };
@@ -359,9 +360,12 @@ export function nextMarketDay(
 ): GameMarket {
   const rng = createRng(rngSeed);
   const headings: GameMarket["headlines"] = [];
-  const multipliers = { ...previous.multipliers };
+  const multipliers = ITEM_CATEGORIES.reduce((result, category) => {
+    result[category] = previous.multipliers[category] ?? 1;
+    return result;
+  }, {} as Record<ItemCategory, number>);
 
-  for (const category of Object.keys(multipliers) as ItemCategory[]) {
+  for (const category of ITEM_CATEGORIES) {
     if (rng() < 0.32) {
       const direction = rng() < 0.55 ? 1 : -1;
       const changePct = Math.round((0.04 + rng() * 0.16) * 100) * direction;
@@ -385,7 +389,7 @@ export function nextMarketDay(
   }
 
   if (headings.length === 0) {
-    const category = pick(rng, Object.keys(multipliers) as ItemCategory[]);
+    const category = pick(rng, ITEM_CATEGORIES);
     headings.push({
       id: randomUUID(),
       day,
@@ -398,7 +402,12 @@ export function nextMarketDay(
   return {
     refreshedDay: day,
     multipliers,
-    headlines: [...headings, ...previous.headlines].slice(0, 8),
+    headlines: [
+      ...headings,
+      ...previous.headlines.filter((headline) =>
+        ITEM_CATEGORIES.includes(headline.category)
+      ),
+    ].slice(0, 8),
   };
 }
 
