@@ -19,10 +19,42 @@ import type {
   ServerStorageLot,
   StorageLot,
 } from "~/app/game/auction/types";
+import {
+  ChainSyncError,
+  isLinked,
+  linkChain,
+  reconcileBalance,
+  resolveChainReveals,
+  resolvePending,
+  saveWithChain,
+  settleDueLots,
+  verifyChainBid,
+  verifyChainReveal,
+  type ChainLotResult,
+  type SaveOps,
+} from "./chain-sync";
 
 const MIN_ACTIVE_LOTS = 3;
 const MAX_KEPT_LOTS = 8;
 const MAX_MUTATION_ATTEMPTS = 6;
+/**
+ * Polling reads do not need a chain round-trip every request; every mutation
+ * still reconciles. The Supabase balance is a mirror that mutations update
+ * immediately, so this only affects crash-recovery latency, not game state.
+ */
+const READ_BALANCE_RECONCILE_MS = 15_000;
+const lastBalanceReconcile = new Map<string, number>();
+
+function balanceReconcileDue(wallet: string): boolean {
+  return (
+    Date.now() - (lastBalanceReconcile.get(wallet) ?? 0) >=
+    READ_BALANCE_RECONCILE_MS
+  );
+}
+
+function markBalanceReconciled(wallet: string): void {
+  lastBalanceReconcile.set(wallet, Date.now());
+}
 
 export class GameActionError extends Error {
   constructor(
@@ -97,7 +129,11 @@ function addHistory(
   state.history = state.history.slice(-80);
 }
 
-function refreshLots(state: PlayerGameState, now: Date): boolean {
+function refreshLots(
+  state: PlayerGameState,
+  now: Date,
+  chain?: Map<number, ChainLotResult>
+): boolean {
   let changed = false;
 
   for (const lot of state.lots) {
@@ -111,10 +147,15 @@ function refreshLots(state: PlayerGameState, now: Date): boolean {
     }
 
     if (now.getTime() >= Date.parse(lot.endsAt)) {
-      const playerWon =
-        lot.playerBid > 0 &&
-        lot.playerBid > lot.rivalBid &&
-        lot.playerBid >= lot.currentBid;
+      const chainResult = chain?.get(lot.listingNumber);
+      if (chainResult) {
+        lot.rivalBid = chainResult.rivalBid;
+      }
+      const playerWon = chainResult
+        ? chainResult.won
+        : lot.playerBid > 0 &&
+          lot.playerBid > lot.rivalBid &&
+          lot.playerBid >= lot.currentBid;
 
       lot.resolvedAt = now.toISOString();
       lot.currentBid = Math.max(lot.playerBid, lot.rivalBid);
@@ -123,7 +164,7 @@ function refreshLots(state: PlayerGameState, now: Date): boolean {
       if (playerWon) {
         lot.status = "won";
         lot.wonBy = "player";
-        lot.paidPrice = lot.playerBid;
+        lot.paidPrice = chainResult ? chainResult.pricePaid : lot.playerBid;
         lot.revealStatus = "ready";
         lot.playerBid = 0;
         state.reputation += 3;
@@ -143,7 +184,7 @@ function refreshLots(state: PlayerGameState, now: Date): boolean {
         lot.revealStatus = "locked";
         lot.playerBid = 0;
         lot.refundedAmount = refund;
-        if (refund > 0) {
+        if (refund > 0 && !isLinked(state)) {
           state.balance += refund;
         }
         addHistory(
@@ -243,6 +284,7 @@ function publicLot(lot: ServerStorageLot): StorageLot {
     rivalCeiling: _rivalCeiling,
     rivalNextBidAt: _rivalNextBidAt,
     contentsClaimed: _contentsClaimed,
+    revealRandom: _revealRandom,
     ...publicFields
   } = lot;
 
@@ -255,6 +297,9 @@ function publicLot(lot: ServerStorageLot): StorageLot {
 export function publicGameState(state: PlayerGameState): PublicPlayerGameState {
   return {
     ...state,
+    chain: state.chain
+      ? { linked: state.chain.linked, syncNonce: state.chain.syncNonce }
+      : undefined,
     lots: state.lots.map(publicLot),
   };
 }
@@ -335,6 +380,8 @@ async function saveIfChanged(
   return (data as SaveRow).state;
 }
 
+const syncOps: SaveOps = { saveIfChanged, readSave };
+
 async function loadProfile(walletAddress: string): Promise<PlayerProfile> {
   const { data, error } = await getSupabaseAdmin()
     .from("player_profiles")
@@ -358,7 +405,7 @@ function applyAction(
   action: GameAction,
   now: Date
 ): boolean {
-  if (action.action === "refresh") {
+  if (action.action === "refresh" || action.action === "link-chain") {
     return false;
   }
 
@@ -396,14 +443,16 @@ function applyAction(
       throw new GameActionError("That bid is outside the house limit.");
     }
 
-    const additional = action.amount - lot.playerBid;
-    if (additional > state.balance) {
-      throw new GameActionError(
-        `You need ${additional}c more in free balance for that raise.`
-      );
-    }
+    if (!isLinked(state)) {
+      const additional = action.amount - lot.playerBid;
+      if (additional > state.balance) {
+        throw new GameActionError(
+          `You need ${additional}c more in free balance for that raise.`
+        );
+      }
 
-    state.balance -= additional;
+      state.balance -= additional;
+    }
     lot.playerBid = action.amount;
     lot.currentBid = Math.max(lot.currentBid, action.amount);
     lot.isLeading = lot.playerBid > lot.rivalBid;
@@ -449,7 +498,12 @@ function applyAction(
     }
 
     lot.revealStatus = "pending";
-    lot.revealReadyAt = new Date(now.getTime() + 2_800).toISOString();
+    if (isLinked(state) && !lot.legacyReveal) {
+      lot.revealRequestedAt = now.toISOString();
+      lot.revealReadyAt = undefined;
+    } else {
+      lot.revealReadyAt = new Date(now.getTime() + 2_800).toISOString();
+    }
     lot.revealError = undefined;
     return true;
   }
@@ -568,28 +622,58 @@ function applyAction(
 export async function loadGameState(
   walletAddress: string
 ): Promise<{ profile: PlayerProfile; state: PublicPlayerGameState }> {
-  const now = new Date();
-  const profile = await loadProfile(walletAddress);
-  const save = await ensureSave(walletAddress, now);
-  const state = cloneState(save.state);
-  const economyChanged = ensureEconomyState(state);
-  const lotsChanged = refreshLots(state, now);
-  const changed = economyChanged || lotsChanged;
+  try {
+    const now = new Date();
+    const profile = await loadProfile(walletAddress);
 
-  if (changed) {
-    const saved = await saveIfChanged(walletAddress, save.version, state);
-    if (saved) {
-      return { profile, state: publicGameState(saved) };
+    for (let attempt = 0; attempt < MAX_MUTATION_ATTEMPTS; attempt += 1) {
+      const save = await ensureSave(walletAddress, now);
+      const state = cloneState(save.state);
+
+      if (await resolvePending(walletAddress, state, syncOps)) {
+        continue;
+      }
+
+      const economyChanged = ensureEconomyState(state);
+      const revealsChanged = await resolveChainReveals(
+        walletAddress,
+        state,
+        now
+      );
+      const chainResults = await settleDueLots(walletAddress, state, now);
+      let balanceSynced = false;
+      if (isLinked(state) && balanceReconcileDue(walletAddress)) {
+        const previousBalance = state.balance;
+        await reconcileBalance(walletAddress, state);
+        markBalanceReconciled(walletAddress);
+        balanceSynced = state.balance !== previousBalance;
+      }
+      const lotsChanged = refreshLots(state, now, chainResults);
+
+      if (
+        !economyChanged &&
+        !balanceSynced &&
+        !revealsChanged &&
+        !lotsChanged
+      ) {
+        return { profile, state: publicGameState(state) };
+      }
+
+      const saved = await saveIfChanged(walletAddress, save.version, state);
+      if (saved) {
+        return { profile, state: publicGameState(saved) };
+      }
     }
 
-    // Another tab changed the row while we were refreshing. Re-read below.
     const fresh = await readSave(walletAddress);
-    if (fresh) {
-      return { profile, state: publicGameState(fresh.state) };
+    const fallback = fresh ?? (await ensureSave(walletAddress, new Date()));
+    return { profile, state: publicGameState(fallback.state) };
+  } catch (error) {
+    if (error instanceof ChainSyncError) {
+      throw new GameActionError(error.message, error.status);
     }
+    throw error;
   }
-
-  return { profile, state: publicGameState(state) };
 }
 
 export async function applyGameAction(
@@ -598,22 +682,105 @@ export async function applyGameAction(
 ): Promise<{ profile: PlayerProfile; state: PublicPlayerGameState }> {
   const profile = await loadProfile(walletAddress);
 
-  for (let attempt = 0; attempt < MAX_MUTATION_ATTEMPTS; attempt += 1) {
-    const now = new Date();
-    const save = await ensureSave(walletAddress, now);
-    const state = cloneState(save.state);
-    const economyChanged = ensureEconomyState(state);
-    const timeChanged = refreshLots(state, now);
-    const actionChanged = applyAction(state, action, now);
+  try {
+    for (let attempt = 0; attempt < MAX_MUTATION_ATTEMPTS; attempt += 1) {
+      const now = new Date();
+      const save = await ensureSave(walletAddress, now);
+      const state = cloneState(save.state);
 
-    if (!economyChanged && !timeChanged && !actionChanged) {
-      return { profile, state: publicGameState(state) };
-    }
+      if (await resolvePending(walletAddress, state, syncOps)) {
+        continue;
+      }
 
-    const saved = await saveIfChanged(walletAddress, save.version, state);
-    if (saved) {
-      return { profile, state: publicGameState(saved) };
+      if (action.action === "link-chain") {
+        const linked = await linkChain(
+          walletAddress,
+          save.version,
+          state,
+          syncOps
+        );
+        if (!linked) {
+          continue;
+        }
+        markBalanceReconciled(walletAddress);
+        const row = await readSave(walletAddress);
+        return { profile, state: publicGameState(row?.state ?? linked) };
+      }
+
+      const economyChanged = ensureEconomyState(state);
+      const revealsChanged = await resolveChainReveals(
+        walletAddress,
+        state,
+        now
+      );
+      const chainResults = await settleDueLots(walletAddress, state, now);
+      let balanceSynced = false;
+      if (isLinked(state)) {
+        const previousBalance = state.balance;
+        await reconcileBalance(walletAddress, state);
+        markBalanceReconciled(walletAddress);
+        balanceSynced = state.balance !== previousBalance;
+      }
+      const timeChanged = refreshLots(state, now, chainResults);
+
+      if (isLinked(state)) {
+        if (action.action === "bid") {
+          const lot = state.lots.find(
+            (candidate) => candidate.id === action.lotId
+          );
+          if (lot) {
+            await verifyChainBid(
+              walletAddress,
+              lot.listingNumber,
+              action.amount
+            );
+          }
+        } else if (action.action === "reveal") {
+          const lot = state.lots.find(
+            (candidate) => candidate.id === action.lotId
+          );
+          if (
+            lot &&
+            lot.revealStatus !== "revealed" &&
+            !lot.legacyReveal
+          ) {
+            await verifyChainReveal(walletAddress, lot.listingNumber);
+          }
+        }
+      }
+
+      const before = cloneState(state);
+      const actionChanged = applyAction(state, action, now);
+
+      if (
+        !economyChanged &&
+        !balanceSynced &&
+        !revealsChanged &&
+        !timeChanged &&
+        !actionChanged
+      ) {
+        return { profile, state: publicGameState(state) };
+      }
+
+      const saved = isLinked(state)
+        ? await saveWithChain({
+            wallet: walletAddress,
+            version: save.version,
+            before,
+            next: state,
+            ops: syncOps,
+          })
+        : await saveIfChanged(walletAddress, save.version, state);
+
+      if (saved) {
+        return { profile, state: publicGameState(saved) };
+      }
     }
+  } catch (error) {
+    if (error instanceof ChainSyncError) {
+      throw new GameActionError(error.message, error.status);
+    }
+    throw error;
   }
 
   throw new GameActionError(

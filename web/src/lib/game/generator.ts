@@ -414,3 +414,29 @@ export function nextMarketDay(
 export function definitionForItem(item: InventoryItem) {
   return ITEMS_BY_KEY[item.definitionKey] ?? null;
 }
+
+// ADD to web/src/app/lib/game/generator.ts (uses createRng, pick, generatedItem, STORAGE_LOT_TEMPLATES already in that file)
+//
+// Contents for a linked (VRF) lot are rolled HERE, at reveal time, from the verified on-chain randomness.
+// createStorageLot() is unchanged: its pre-rolled `contents` still drive previewClues, silhouettes and the
+// rival's ceiling, but for linked lots they are REPLACED at reveal and never awarded.
+export function rollContentsFromRandomness(
+  lot: ServerStorageLot,
+  randomnessHex: string,
+  day: number
+): InventoryItem[] {
+  const template = STORAGE_LOT_TEMPLATES.find(
+    (t) => t.title === lot.title && t.facility === lot.facility
+  );
+  if (!template) {
+    throw new Error(`No storage template for lot ${lot.id}`);
+  }
+  // Deterministic: same randomness + lot => same loot, so recomputation can never disagree with the stored copy.
+  const rng = createRng(`vrf:${randomnessHex}:${lot.listingNumber}`);
+  const itemCount =
+    template.itemCount.min +
+    Math.floor(rng() * (template.itemCount.max - template.itemCount.min + 1));
+  return Array.from({ length: itemCount }, () =>
+    generatedItem(rng, template, lot.listingNumber, day)
+  );
+}
