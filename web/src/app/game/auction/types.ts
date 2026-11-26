@@ -1,3 +1,4 @@
+import type { ChainMirror } from "~/lib/game/chain-sync";
 import {
   GOOD_IDS,
   type GameEconomyState,
@@ -78,6 +79,9 @@ export type StorageLot = {
   silhouettes: LotSilhouette[];
   revealStatus: RevealStatus;
   revealReadyAt?: string;
+  revealRequestedAt?: string;
+  /** A won lot carried over from off-chain play, opened with the legacy timer. */
+  legacyReveal?: boolean;
   revealError?: string;
   contents?: InventoryItem[];
   paidPrice?: number;
@@ -92,6 +96,8 @@ export type ServerStorageLot = StorageLot & {
   rivalCeiling: number;
   rivalNextBidAt: string;
   contentsClaimed: boolean;
+  /** Verified VRF randomness hex; persisted with the revealed loot. */
+  revealRandom?: string;
 };
 
 export type GameHistoryEntry = {
@@ -129,6 +135,8 @@ export type PlayerGameState = {
   economy: GameEconomyState;
   nextListingNumber: number;
   createdAt: string;
+  /** Present after the wallet's on-chain profile has been linked. */
+  chain?: ChainMirror;
 };
 
 export type PublicPlayerGameState = Omit<PlayerGameState, "lots"> & {
@@ -146,6 +154,7 @@ export type GameStateResponse = {
 
 export type GameAction =
   | { action: "refresh" }
+  | { action: "link-chain" }
   | { action: "bid"; lotId: string; amount: number }
   | { action: "reveal"; lotId: string }
   | { action: "sell"; itemId: string; buyerId?: string }

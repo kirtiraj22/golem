@@ -9,6 +9,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useStockWarsChain } from "~/lib/solana/stock-wars-client";
 import type { GameStateResponse } from "../auction/types";
 import { getEconomySnapshot } from "../simulation/game-economy";
 import type { GoodId, WorldSnapshot } from "../simulation/types";
@@ -109,6 +110,8 @@ export const AuctionProvider = ({
   const actionInFlight = useRef(false);
   const mounted = useRef(true);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const chain = useStockWarsChain(profile.walletAddress);
+  const chainInFlight = useRef(false);
 
   const applyPayload = useCallback((payload: GameStateResponse) => {
     if (!mounted.current) return;
@@ -236,20 +239,135 @@ export const AuctionProvider = ({
   }, []);
 
   const placeBid = useCallback(
-    (lotId: string, amount: number) =>
-      runAction(
+    async (lotId: string, amount: number) => {
+      const lot = data?.state.lots.find((candidate) => candidate.id === lotId);
+      if (!lot) {
+        return false;
+      }
+      if (amount <= lot.currentBid) {
+        setFeedback({
+          tone: "error",
+          message: `Your bid must beat the current ${lot.currentBid}c bid.`,
+        });
+        return false;
+      }
+      if (chainInFlight.current || actionInFlight.current) {
+        return false;
+      }
+
+      chainInFlight.current = true;
+      setBusy(true);
+
+      try {
+        if (!data?.state.chain?.linked) {
+          setFeedback({
+            tone: "working",
+            message: "Checking your on-chain profile…",
+          });
+          await chain.ensureProfile(() => {
+            setFeedback({
+              tone: "working",
+              message:
+                "Approve the one-time on-chain profile setup in your wallet.",
+            });
+          });
+          applyPayload(await requestState("POST", { action: "link-chain" }));
+        }
+
+        setFeedback({
+          tone: "working",
+          message: "Checking this auction's on-chain lot setup…",
+        });
+        await chain.ensureLot(lot.listingNumber, () => {
+          setFeedback({
+            tone: "working",
+            message:
+              "Approve the one-time on-chain lot setup. This is only needed once per auction.",
+          });
+        });
+
+        setFeedback({
+          tone: "working",
+          message: `Approve the ${amount}c bid on the MagicBlock rollup. If your wallet warns that simulation failed, approve it — the app already verified the bid on the ER.`,
+        });
+        await chain.bid(lot.listingNumber, amount);
+      } catch (caught) {
+        setFeedback({
+          tone: "error",
+          message:
+            caught instanceof Error
+              ? caught.message
+              : "The bid transaction failed.",
+        });
+        return false;
+      } finally {
+        chainInFlight.current = false;
+        if (mounted.current) {
+          setBusy(false);
+        }
+      }
+
+      return runAction(
         { action: "bid", lotId, amount },
-        `Sending a ${amount}c bid…`,
-        "Bid recorded. Watch the rival's counter-bid."
-      ),
-    [runAction]
+        `Confirming your ${amount}c bid…`,
+        "Bid confirmed on-chain. Watch the rival's counter-bid."
+      );
+    },
+    [applyPayload, chain, data, runAction]
   );
 
   const revealLot = useCallback(
     async (lotId: string) => {
+      const lot = data?.state.lots.find((candidate) => candidate.id === lotId);
+      if (!lot) {
+        return false;
+      }
+
+      if (
+        data?.state.chain?.linked &&
+        !lot.legacyReveal &&
+        lot.revealStatus !== "pending" &&
+        lot.revealStatus !== "revealed"
+      ) {
+        if (chainInFlight.current || actionInFlight.current) {
+          return false;
+        }
+
+        chainInFlight.current = true;
+        setBusy(true);
+
+        try {
+          setFeedback({
+            tone: "working",
+            message: "Checking the vault's on-chain reveal state…",
+          });
+          await chain.requestReveal(lot.listingNumber, () => {
+            setFeedback({
+              tone: "working",
+              message:
+                "Approve the one-time VRF reveal request in your wallet. Retries are handled by the game authority.",
+            });
+          });
+        } catch (caught) {
+          setFeedback({
+            tone: "error",
+            message:
+              caught instanceof Error
+                ? caught.message
+                : "The reveal transaction failed.",
+          });
+          return false;
+        } finally {
+          chainInFlight.current = false;
+          if (mounted.current) {
+            setBusy(false);
+          }
+        }
+      }
+
       const ok = await runAction(
         { action: "reveal", lotId },
-        "Opening the vault…",
+        "Waiting for verified randomness…",
         "Vault open. The contents are in your haul."
       );
 
@@ -263,7 +381,7 @@ export const AuctionProvider = ({
 
       return ok;
     },
-    [refresh, runAction]
+    [chain, data, refresh, runAction]
   );
 
   const sellItem = useCallback(

@@ -9,6 +9,7 @@ const DEFAULT_RPC_ENDPOINT = "https://api.devnet.solana.com";
 
 type SolanaProviderProps = {
   children: ReactNode;
+  autoConnect?: boolean;
 };
 
 /**
@@ -16,7 +17,10 @@ type SolanaProviderProps = {
  * auto-discovery, so Phantom, Solflare, Backpack, and other standard wallets
  * are picked up without importing the full wallet-adapter bundle.
  */
-export default function SolanaProvider({ children }: SolanaProviderProps) {
+export default function SolanaProvider({
+  children,
+  autoConnect = false,
+}: SolanaProviderProps) {
   const endpoint = useMemo(
     () =>
       process.env.NEXT_PUBLIC_SOLANA_RPC_URL?.trim() || DEFAULT_RPC_ENDPOINT,
@@ -25,7 +29,7 @@ export default function SolanaProvider({ children }: SolanaProviderProps) {
 
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={[]} autoConnect={false}>
+      <WalletProvider wallets={[]} autoConnect={autoConnect}>
         <WalletModalProvider>{children}</WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>

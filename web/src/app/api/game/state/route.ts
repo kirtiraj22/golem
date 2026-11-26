@@ -82,6 +82,8 @@ export async function POST(request: Request) {
 
     if (payload.action === "refresh") {
       action = { action: "refresh" };
+    } else if (payload.action === "link-chain") {
+      action = { action: "link-chain" };
     } else if (payload.action === "advance-day") {
       action = { action: "advance-day", expectedDay };
     } else if (payload.action === "fast-forward-week") {

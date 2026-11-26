@@ -1,5 +1,6 @@
 "use client";
 import React, { createContext, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { SPRITESHEET_IMAGE_SRC } from "~/constants/helpers";
 import RenderLevel from "./components/level-layout/render-level";
 import MarketHud from "./components/hud/market-hud";
@@ -8,6 +9,11 @@ import { AuctionProvider, type AuctionProfile } from "./contexts/auction-context
 import { MarketUiProvider } from "./contexts/market-ui-context";
 import { WorldClockProvider } from "./contexts/world-clock-context";
 import soundManager from "./classes/sounds";
+
+const SolanaProvider = dynamic(
+  () => import("~/app/onboarding/solana-provider"),
+  { ssr: false }
+);
 
 interface SpriteSheetImage {
   image: HTMLImageElement | null;
@@ -60,18 +66,20 @@ const Game = ({
 }: GameProps) => {
   return (
     <GameProvider>
-      <AuctionProvider profile={playerProfile}>
-        <WorldClockProvider>
-          <MarketUiProvider>
-            <RenderLevel
-              levelConfig={levelConfig}
-              showLegacyHud={showLegacyHud}
-            />
-            <MarketHud />
-            {!showLegacyHud && <AuctionHud />}
-          </MarketUiProvider>
-        </WorldClockProvider>
-      </AuctionProvider>
+      <SolanaProvider autoConnect>
+        <AuctionProvider profile={playerProfile}>
+          <WorldClockProvider>
+            <MarketUiProvider>
+              <RenderLevel
+                levelConfig={levelConfig}
+                showLegacyHud={showLegacyHud}
+              />
+              <MarketHud />
+              {!showLegacyHud && <AuctionHud />}
+            </MarketUiProvider>
+          </WorldClockProvider>
+        </AuctionProvider>
+      </SolanaProvider>
     </GameProvider>
   );
 };
