@@ -1,14 +1,3 @@
-//! Black Market: Stock Wars - minimal Solana + MagicBlock program.
-//!
-//! On-chain: per-wallet balance, bid escrow, auction settlement, balance credits for
-//! sale proceeds, VRF reveal of storage-unit contents. Everything else (NPCs, timers,
-//! catalogues, prices, news, usernames) is off-chain.
-//!
-//! NOTE: public ER state is NOT private. Nothing here relies on secrecy; the VRF
-//! guarantees the contents are unpredictable and verifiable, not hidden.
-//!
-//! NOT COMPILED OR TESTED. See the accompanying notes for unverified SDK details.
-
 use anchor_lang::prelude::*;
 use ephemeral_rollups_sdk::anchor::{commit, delegate, ephemeral, vrf, vrf_callback};
 use ephemeral_rollups_sdk::cpi::DelegateConfig;
@@ -28,201 +17,178 @@ use constants::*;
 use errors::GameError;
 use state::*;
 
-// TODO(you): REPLACE with your existing project's program ID (also in Anchor.toml).
-// This is the default Anchor placeholder ID, valid but temporary.
+// Program ID unchanged from your file.
 declare_id!("GZNyBfvyMZZ67cXugKMz9uagcv2fsWP3F64ZhdAQPEiV");
 
-/// This program's scoped VRF identity PDA, derived at compile time (SDK 0.18 API).
 const PROGRAM_IDENTITY: Pubkey = program_identity_pubkey(&crate::ID);
 
-#[ephemeral] // required by the SDK for the commit/undelegate builder
+#[ephemeral]
 #[program]
 pub mod stock_wars {
     use super::*;
 
-    // ------------------------------------------------------------------
-    // BASE LAYER (Solana)
-    // ------------------------------------------------------------------
+    // ================= BASE LAYER (account NOT delegated) =================
 
-    /// Create the wallet's PlayerState on first use; no-op for a returning player.
-    ///
-    /// TRUST ASSUMPTION (faucet): `starting_balance` is supplied by the caller and is
-    /// not validated, so any wallet can mint itself any starting balance. Acceptable
-    /// for a hackathon demo; production would require the game authority to co-sign or
-    /// fix the amount. The frontend/backend decides the value (nothing hardcoded here).
-    ///
-    /// Must be called on the base layer while the account is NOT delegated.
-    /// Frontend: if the account exists (delegated or not), skip this call.
-    pub fn init_player(ctx: Context<InitPlayer>, starting_balance: u64) -> Result<()> {
-        let player = &mut ctx.accounts.player_state;
-        // Freshly created accounts are zeroed, so authority == default means "new".
-        if player.authority == Pubkey::default() {
-            player.authority = ctx.accounts.payer.key();
-            player.balance = starting_balance;
-            player.escrow = 0;
-            player.auction_id = 0;
-            player.phase = AuctionPhase::Idle;
-            player.reveal_nonce = 0;
-            player.reveal_random = [0u8; 32];
-            player.bump = ctx.bumps.player_state;
+    /// Create the wallet's PlayerState with balance 0 (no faucet: the caller can no longer
+    /// choose its own balance). The backend then seeds the balance from the existing
+    /// Supabase save via `apply_delta` (nonce 1). No-op for a returning player.
+    pub fn init_player(ctx: Context<InitPlayer>) -> Result<()> {
+        let p = &mut ctx.accounts.player_state;
+        if p.authority == Pubkey::default() {
+            p.authority = ctx.accounts.payer.key();
+            p.balance = 0;
+            p.sync_nonce = 0;
+            p.bump = ctx.bumps.player_state;
         }
         Ok(())
     }
 
-    /// Delegate the player's PDA to the Ephemeral Rollup. An optional validator may be
-    /// passed as the first remaining account.
     pub fn delegate_player(ctx: Context<DelegatePlayer>) -> Result<()> {
-        let payer_key = ctx.accounts.payer.key();
+        let k = ctx.accounts.payer.key();
         ctx.accounts.delegate_player_state(
             &ctx.accounts.payer,
-            &[PLAYER_SEED, payer_key.as_ref()],
+            &[PLAYER_SEED, k.as_ref()],
             DelegateConfig {
-                validator: ctx.remaining_accounts.first().map(|acc| acc.key()),
+                validator: ctx.remaining_accounts.first().map(|a| a.key()),
                 ..Default::default()
             },
         )?;
         Ok(())
     }
 
-    // ------------------------------------------------------------------
-    // EPHEMERAL ROLLUP (all instructions below run on the ER)
-    // NOTE: the ER does not auto-commit on a timer; balances reach Solana only when
-    // `commit_and_undelegate` runs.
-    // ------------------------------------------------------------------
-
-    /// Place or raise a bid. `amount` is the NEW TOTAL bid; only the difference is
-    /// newly locked. Funds move balance -> escrow, so they can't be spent twice.
-    ///
-    /// AUCTION IDS MUST INCREASE MONOTONICALLY PER PLAYER: starting a new auction
-    /// requires `auction_id > player.auction_id` (the id of the player's previous
-    /// auction). The backend must issue strictly increasing ids per wallet.
-    pub fn place_bid(ctx: Context<PlaceBid>, auction_id: u64, amount: u64) -> Result<()> {
-        let player = &mut ctx.accounts.player_state;
-
-        match player.phase {
-            AuctionPhase::Idle | AuctionPhase::Revealed => {
-                // Starting a fresh auction. Also rejects id 0 (initial auction_id is 0).
-                require!(
-                    auction_id > player.auction_id,
-                    GameError::AuctionIdNotIncreasing
-                );
-                player.auction_id = auction_id;
-                player.phase = AuctionPhase::Bidding;
-                player.reveal_nonce = 0;
-                player.reveal_random = [0u8; 32];
-            }
-            AuctionPhase::Bidding => {
-                require!(auction_id == player.auction_id, GameError::AuctionBusy);
-            }
-            AuctionPhase::Won | AuctionPhase::RevealPending => {
-                return err!(GameError::AuctionBusy);
-            }
+    /// Create this player's bid account for one lot. Bundle with `delegate_lot_bid` in ONE
+    /// transaction (one wallet approval) before the first bid on that lot.
+    pub fn init_lot_bid(ctx: Context<InitLotBid>, listing: u64) -> Result<()> {
+        let l = &mut ctx.accounts.lot_bid;
+        if l.player == Pubkey::default() {
+            l.player = ctx.accounts.payer.key();
+            l.listing = listing;
+            l.escrow = 0;
+            l.rival_bid = 0;
+            l.price_paid = 0;
+            l.status = LotStatus::Open;
+            l.reveal = RevealState::None;
+            l.reveal_nonce = 0;
+            l.reveal_random = [0u8; 32];
+            l.bump = ctx.bumps.lot_bid;
         }
-
-        require!(amount > player.escrow, GameError::BidTooLow);
-        let delta = amount
-            .checked_sub(player.escrow)
-            .ok_or(GameError::MathOverflow)?;
-        require!(delta <= player.balance, GameError::InsufficientBalance);
-
-        player.balance = player
-            .balance
-            .checked_sub(delta)
-            .ok_or(GameError::MathOverflow)?;
-        player.escrow = amount;
         Ok(())
     }
 
-    /// Finalize the auction result. Callable ONLY by GAME_AUTHORITY (backend signer).
-    ///
-    /// won = true : the backend-determined `price` is charged from escrow and the
-    ///              remainder of the escrow is refunded; phase -> Won. The price comes
-    ///              from the backend (not from the player-controlled escrow size) so a
-    ///              player cannot underpay by escrowing less than the real winning bid.
-    ///              Fails if `price` > escrow (backend should then settle as a loss).
-    /// won = false: the whole escrow is refunded; phase -> Idle. `price` is ignored.
-    pub fn settle_auction(
-        ctx: Context<SettleAuction>,
-        auction_id: u64,
-        won: bool,
-        price: u64,
-    ) -> Result<()> {
-        let player = &mut ctx.accounts.player_state;
-        require!(player.phase == AuctionPhase::Bidding, GameError::InvalidPhase);
-        require!(player.auction_id == auction_id, GameError::WrongAuction);
+    pub fn delegate_lot_bid(ctx: Context<DelegateLotBid>, listing: u64) -> Result<()> {
+        let k = ctx.accounts.payer.key();
+        ctx.accounts.delegate_lot_bid(
+            &ctx.accounts.payer,
+            &[LOT_SEED, k.as_ref(), &listing.to_le_bytes()],
+            DelegateConfig {
+                validator: ctx.remaining_accounts.first().map(|a| a.key()),
+                ..Default::default()
+            },
+        )?;
+        Ok(())
+    }
 
-        let refund = if won {
-            require!(price <= player.escrow, GameError::PriceExceedsEscrow);
-            player
-                .escrow
-                .checked_sub(price)
-                .ok_or(GameError::MathOverflow)?
+    /// Reclaim rent once a lot is finished and undelegated (Lost, or Won + revealed).
+    pub fn close_lot_bid(ctx: Context<CloseLotBid>) -> Result<()> {
+        let l = &ctx.accounts.lot_bid;
+        require!(
+            l.status == LotStatus::Lost
+                || (l.status == LotStatus::Won && l.reveal == RevealState::Done),
+            GameError::CannotClose
+        );
+        Ok(())
+    }
+
+    // ================= GAME AUTHORITY (works on whichever layer the account lives) =================
+
+    /// Apply ONE off-chain balance change atomically: `credit` first, then `debit`.
+    /// Covers every non-auction currency mutation in state.ts: sell (credit), sell-good (credit),
+    /// buy-good (debit), plus the initial import of an existing save.
+    /// `nonce` must be exactly sync_nonce+1, so a retried backend call can never double-apply.
+    /// TRUST: the backend can move a player's FREE balance only (never escrow), and only through
+    /// this narrow instruction. It cannot touch a bid already locked in a lot.
+    pub fn apply_delta(ctx: Context<ApplyDelta>, nonce: u64, credit: u64, debit: u64) -> Result<()> {
+        let p = &mut ctx.accounts.player_state;
+        require!(
+            nonce == p.sync_nonce.checked_add(1).ok_or(GameError::MathOverflow)?,
+            GameError::BadSyncNonce
+        );
+        p.balance = p
+            .balance
+            .checked_add(credit)
+            .ok_or(GameError::MathOverflow)?
+            .checked_sub(debit)
+            .ok_or(GameError::InsufficientBalance)?;
+        p.sync_nonce = nonce;
+        Ok(())
+    }
+
+    // ================= EPHEMERAL ROLLUP (both accounts delegated) =================
+
+    /// Place or raise a bid. `amount` is the NEW TOTAL bid on this lot; only the increase is
+    /// newly locked (balance -> escrow), so funds cannot be spent twice. Per-lot escrow lets a
+    /// player hold bids on several lots simultaneously.
+    /// The "must beat the current/rival bid" rule stays off-chain (the rival is simulated):
+    /// an under-rival bid cannot win and is fully refunded at settlement, so it can't hurt anyone.
+    pub fn place_bid(ctx: Context<PlaceBid>, amount: u64) -> Result<()> {
+        let p = &mut ctx.accounts.player_state;
+        let l = &mut ctx.accounts.lot_bid;
+        require!(l.status == LotStatus::Open, GameError::LotClosed);
+        require!(amount <= MAX_BID, GameError::BidTooHigh);
+        require!(amount > l.escrow, GameError::BidTooLow);
+        let delta = amount.checked_sub(l.escrow).ok_or(GameError::MathOverflow)?;
+        require!(delta <= p.balance, GameError::InsufficientBalance);
+        p.balance = p.balance.checked_sub(delta).ok_or(GameError::MathOverflow)?;
+        l.escrow = amount;
+        Ok(())
+    }
+
+    /// Close a lot. Callable ONLY by GAME_AUTHORITY, once the backend's clock says the lot ended.
+    /// The backend supplies ONLY the rival's final bid; the contract derives the winner and the
+    /// price from the on-chain escrow (same rule as refreshLots: escrow > 0 && escrow > rival_bid).
+    /// Won : escrow is consumed as the price (it was already deducted at bid time).
+    /// Lost: escrow is refunded to the player's balance.
+    pub fn settle_lot(ctx: Context<SettleLot>, rival_bid: u64) -> Result<()> {
+        let p = &mut ctx.accounts.player_state;
+        let l = &mut ctx.accounts.lot_bid;
+        require!(l.status == LotStatus::Open, GameError::LotClosed);
+        l.rival_bid = rival_bid;
+        if l.escrow > 0 && l.escrow > rival_bid {
+            l.status = LotStatus::Won;
+            l.price_paid = l.escrow;
         } else {
-            player.escrow
-        };
-
-        player.balance = player
-            .balance
-            .checked_add(refund)
-            .ok_or(GameError::MathOverflow)?;
-        player.escrow = 0;
-        player.phase = if won {
-            AuctionPhase::Won
-        } else {
-            AuctionPhase::Idle
-        };
+            l.status = LotStatus::Lost;
+            p.balance = p.balance.checked_add(l.escrow).ok_or(GameError::MathOverflow)?;
+        }
+        l.escrow = 0;
         Ok(())
     }
 
-    /// Credit in-game currency (e.g. proceeds from selling assets to NPCs / the market).
-    /// Callable ONLY by GAME_AUTHORITY. Sales are simulated off-chain, so the backend
-    /// is trusted to credit only legitimate amounts. Independent of auction phase.
-    pub fn credit_balance(ctx: Context<CreditBalance>, amount: u64) -> Result<()> {
-        let player = &mut ctx.accounts.player_state;
-        player.balance = player
-            .balance
-            .checked_add(amount)
-            .ok_or(GameError::MathOverflow)?;
-        Ok(())
-    }
-
-    /// Request VRF randomness for the won storage unit.
-    ///
-    /// RETRY SEMANTICS (verified from MagicBlock docs: each request is enqueued with a
-    /// unique id mixing caller_seed, slot, slot hash, time and queue index, so a repeated
-    /// request is NOT deduplicated; every request gets fulfilled and billed separately):
-    ///  - first request (phase Won): only the player's wallet may call it.
-    ///  - retry (phase RevealPending): only GAME_AUTHORITY may call it, so a player can
-    ///    never re-roll. Each request increments `reveal_nonce`, and the callback only
-    ///    accepts the CURRENT nonce, so a stale/duplicate in-flight request can still be
-    ///    fulfilled by the oracle but its callback is rejected and changes no state.
-    pub fn request_reveal(ctx: Context<RequestReveal>, auction_id: u64) -> Result<()> {
+    /// Request VRF randomness for a WON lot.
+    /// First request: the lot's owner only. Retry while Pending: GAME_AUTHORITY only (no re-rolls).
+    /// Each request bumps `reveal_nonce`; the callback accepts only the current nonce.
+    pub fn request_reveal(ctx: Context<RequestReveal>) -> Result<()> {
         let payer_key = ctx.accounts.payer.key();
-        let player_key = ctx.accounts.player_state.key();
-
-        let (authority, nonce) = {
-            let player = &mut ctx.accounts.player_state;
-            require!(player.auction_id == auction_id, GameError::WrongAuction);
-            match player.phase {
-                AuctionPhase::Won => {
-                    require!(payer_key == player.authority, GameError::UnauthorizedAuthority);
+        let lot_key = ctx.accounts.lot_bid.key();
+        let (player, listing, nonce) = {
+            let l = &mut ctx.accounts.lot_bid;
+            require!(l.status == LotStatus::Won, GameError::LotNotWon);
+            match l.reveal {
+                RevealState::None => {
+                    require!(payer_key == l.player, GameError::NotLotOwner)
                 }
-                AuctionPhase::RevealPending => {
-                    require!(payer_key == GAME_AUTHORITY, GameError::UnauthorizedAuthority);
+                RevealState::Pending => {
+                    require!(payer_key == GAME_AUTHORITY, GameError::UnauthorizedAuthority)
                 }
-                _ => return err!(GameError::InvalidPhase),
+                RevealState::Done => return err!(GameError::RevealAlreadyRequested),
             }
-            player.phase = AuctionPhase::RevealPending;
-            player.reveal_nonce = player
-                .reveal_nonce
-                .checked_add(1)
-                .ok_or(GameError::MathOverflow)?;
-            (player.authority, player.reveal_nonce)
+            l.reveal = RevealState::Pending;
+            l.reveal_nonce = l.reveal_nonce.checked_add(1).ok_or(GameError::MathOverflow)?;
+            (l.player, l.listing, l.reveal_nonce)
         };
 
-        // Per-request entropy: wallet bytes mixed with auction id and nonce.
-        let mut caller_seed = authority.to_bytes();
-        for (i, b) in auction_id
+        let mut caller_seed = player.to_bytes();
+        for (i, b) in listing
             .to_le_bytes()
             .iter()
             .chain(nonce.to_le_bytes().iter())
@@ -231,9 +197,8 @@ pub mod stock_wars {
             caller_seed[i] ^= *b;
         }
 
-        // Forwarded to the callback after `randomness`: (auction_id: u64, nonce: u32).
-        let mut callback_args = auction_id.to_le_bytes().to_vec();
-        callback_args.extend_from_slice(&nonce.to_le_bytes());
+        // Forwarded to the callback after `randomness`: (nonce: u32).
+        let callback_args = nonce.to_le_bytes().to_vec();
 
         let params = RequestRandomnessParams {
             payer: payer_key,
@@ -241,9 +206,8 @@ pub mod stock_wars {
             callback_program_id: ID,
             callback_discriminator: crate::instruction::CallbackReveal::DISCRIMINATOR.to_vec(),
             caller_seed,
-            // Accounts the callback needs
             accounts_metas: Some(vec![SerializableAccountMeta {
-                pubkey: player_key,
+                pubkey: lot_key,
                 is_signer: false,
                 is_writable: true,
             }]),
@@ -251,47 +215,49 @@ pub mod stock_wars {
             ..Default::default()
         };
         let ix = create_request_randomness_ix_const(params, PROGRAM_IDENTITY);
-
         ctx.accounts
             .invoke_signed_vrf(&ctx.accounts.payer.to_account_info(), &ix)?;
         Ok(())
     }
 
-    /// VRF callback (called by the VRF program; scoped identity enforced by
-    /// #[vrf_callback]). Stores the randomness only if it matches the player's pending
-    /// auction id AND the current request nonce.
+    /// VRF callback. Stores randomness only if a request is pending AND nonce is current.
     pub fn callback_reveal(
         ctx: Context<CallbackReveal>,
         randomness: [u8; 32],
-        auction_id: u64,
         nonce: u32,
     ) -> Result<()> {
-        let player = &mut ctx.accounts.player_state;
-        require!(
-            player.phase == AuctionPhase::RevealPending,
-            GameError::InvalidPhase
-        );
-        require!(player.auction_id == auction_id, GameError::WrongAuction);
-        require!(player.reveal_nonce == nonce, GameError::StaleRevealRequest);
-
-        player.reveal_random = randomness;
-        player.phase = AuctionPhase::Revealed;
+        let l = &mut ctx.accounts.lot_bid;
+        require!(l.reveal == RevealState::Pending, GameError::RevealNotRequested);
+        require!(l.reveal_nonce == nonce, GameError::StaleRevealRequest);
+        l.reveal_random = randomness;
+        l.reveal = RevealState::Done;
         Ok(())
     }
 
-    /// Commit state to Solana and undelegate. Refused while a VRF reveal is pending
-    /// (the callback must land on the ER while the account is still delegated).
-    pub fn commit_and_undelegate(ctx: Context<CommitAndUndelegate>) -> Result<()> {
-        require!(
-            ctx.accounts.player_state.phase != AuctionPhase::RevealPending,
-            GameError::RevealPending
-        );
+    /// Commit + undelegate the player's balance account (does not depend on any lot).
+    pub fn commit_and_undelegate_player(ctx: Context<CommitPlayer>) -> Result<()> {
         MagicIntentBundleBuilder::new(
             ctx.accounts.payer.to_account_info(),
             ctx.accounts.magic_context.to_account_info(),
             ctx.accounts.magic_program.to_account_info(),
         )
         .commit_and_undelegate(&[ctx.accounts.player_state.to_account_info()])
+        .build_and_invoke()?;
+        Ok(())
+    }
+
+    /// Commit + undelegate a finished lot. Refused while Open or while a reveal is pending
+    /// (the VRF callback must land while the account is still delegated).
+    pub fn commit_and_undelegate_lot(ctx: Context<CommitLot>) -> Result<()> {
+        let l = &ctx.accounts.lot_bid;
+        require!(l.status != LotStatus::Open, GameError::LotStillOpen);
+        require!(l.reveal != RevealState::Pending, GameError::RevealPending);
+        MagicIntentBundleBuilder::new(
+            ctx.accounts.payer.to_account_info(),
+            ctx.accounts.magic_context.to_account_info(),
+            ctx.accounts.magic_program.to_account_info(),
+        )
+        .commit_and_undelegate(&[ctx.accounts.lot_bid.to_account_info()])
         .build_and_invoke()?;
         Ok(())
     }
@@ -316,14 +282,67 @@ pub struct InitPlayer<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[delegate] // injects delegation buffer/record/metadata/program accounts
+#[delegate]
 #[derive(Accounts)]
 pub struct DelegatePlayer<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
-    /// CHECK: the caller's own PlayerState PDA (seeds include the signer).
+    /// CHECK: caller's own PlayerState PDA (seeds include the signer).
     #[account(mut, del, seeds = [PLAYER_SEED, payer.key().as_ref()], bump)]
     pub player_state: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(listing: u64)]
+pub struct InitLotBid<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    #[account(
+        init_if_needed,
+        payer = payer,
+        space = 8 + LotBid::INIT_SPACE,
+        seeds = [LOT_SEED, payer.key().as_ref(), &listing.to_le_bytes()],
+        bump
+    )]
+    pub lot_bid: Account<'info, LotBid>,
+    pub system_program: Program<'info, System>,
+}
+
+#[delegate]
+#[derive(Accounts)]
+#[instruction(listing: u64)]
+pub struct DelegateLotBid<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    /// CHECK: caller's own LotBid PDA (seeds include the signer and listing).
+    #[account(mut, del, seeds = [LOT_SEED, payer.key().as_ref(), &listing.to_le_bytes()], bump)]
+    pub lot_bid: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct CloseLotBid<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    #[account(
+        mut,
+        close = payer,
+        constraint = lot_bid.player == payer.key() @ GameError::NotLotOwner,
+        seeds = [LOT_SEED, lot_bid.player.as_ref(), &lot_bid.listing.to_le_bytes()],
+        bump = lot_bid.bump
+    )]
+    pub lot_bid: Account<'info, LotBid>,
+}
+
+#[derive(Accounts)]
+pub struct ApplyDelta<'info> {
+    #[account(address = GAME_AUTHORITY @ GameError::UnauthorizedAuthority)]
+    pub game_authority: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [PLAYER_SEED, player_state.authority.as_ref()],
+        bump = player_state.bump
+    )]
+    pub player_state: Account<'info, PlayerState>,
 }
 
 #[derive(Accounts)]
@@ -335,45 +354,46 @@ pub struct PlaceBid<'info> {
         bump = player_state.bump
     )]
     pub player_state: Account<'info, PlayerState>,
+    #[account(
+        mut,
+        constraint = lot_bid.player == payer.key() @ GameError::NotLotOwner,
+        seeds = [LOT_SEED, lot_bid.player.as_ref(), &lot_bid.listing.to_le_bytes()],
+        bump = lot_bid.bump
+    )]
+    pub lot_bid: Account<'info, LotBid>,
 }
 
 #[derive(Accounts)]
-pub struct SettleAuction<'info> {
+pub struct SettleLot<'info> {
     #[account(address = GAME_AUTHORITY @ GameError::UnauthorizedAuthority)]
     pub game_authority: Signer<'info>,
     #[account(
         mut,
-        seeds = [PLAYER_SEED, player_state.authority.as_ref()],
+        seeds = [PLAYER_SEED, lot_bid.player.as_ref()],
         bump = player_state.bump
     )]
     pub player_state: Account<'info, PlayerState>,
-}
-
-#[derive(Accounts)]
-pub struct CreditBalance<'info> {
-    #[account(address = GAME_AUTHORITY @ GameError::UnauthorizedAuthority)]
-    pub game_authority: Signer<'info>,
     #[account(
         mut,
-        seeds = [PLAYER_SEED, player_state.authority.as_ref()],
-        bump = player_state.bump
+        seeds = [LOT_SEED, lot_bid.player.as_ref(), &lot_bid.listing.to_le_bytes()],
+        bump = lot_bid.bump
     )]
-    pub player_state: Account<'info, PlayerState>,
+    pub lot_bid: Account<'info, LotBid>,
 }
 
-#[vrf] // injects program_identity, vrf_program, slot_hashes, system_program + invoke_signed_vrf
+#[vrf]
 #[derive(Accounts)]
 pub struct RequestReveal<'info> {
-    /// The player's wallet (first request) or GAME_AUTHORITY (retry); checked in the handler.
+    /// Lot owner (first request) or GAME_AUTHORITY (retry); checked in the handler.
     #[account(mut)]
     pub payer: Signer<'info>,
     #[account(
         mut,
-        seeds = [PLAYER_SEED, player_state.authority.as_ref()],
-        bump = player_state.bump
+        seeds = [LOT_SEED, lot_bid.player.as_ref(), &lot_bid.listing.to_le_bytes()],
+        bump = lot_bid.bump
     )]
-    pub player_state: Account<'info, PlayerState>,
-    /// CHECK: VRF oracle queue; this runs on the ER, so only the delegated queues are allowed.
+    pub lot_bid: Account<'info, LotBid>,
+    /// CHECK: VRF oracle queue; only the delegated ER queues are allowed.
     #[account(
         mut,
         constraint = oracle_queue.key() == vrf::consts::DEFAULT_EPHEMERAL_QUEUE
@@ -382,20 +402,20 @@ pub struct RequestReveal<'info> {
     pub oracle_queue: UncheckedAccount<'info>,
 }
 
-#[vrf_callback] // injects `vrf_program_identity: Signer` bound to this program's scoped VRF identity
+#[vrf_callback]
 #[derive(Accounts)]
 pub struct CallbackReveal<'info> {
     #[account(
         mut,
-        seeds = [PLAYER_SEED, player_state.authority.as_ref()],
-        bump = player_state.bump
+        seeds = [LOT_SEED, lot_bid.player.as_ref(), &lot_bid.listing.to_le_bytes()],
+        bump = lot_bid.bump
     )]
-    pub player_state: Account<'info, PlayerState>,
+    pub lot_bid: Account<'info, LotBid>,
 }
 
-#[commit] // injects magic_context + magic_program
+#[commit]
 #[derive(Accounts)]
-pub struct CommitAndUndelegate<'info> {
+pub struct CommitPlayer<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     #[account(
@@ -404,4 +424,18 @@ pub struct CommitAndUndelegate<'info> {
         bump = player_state.bump
     )]
     pub player_state: Account<'info, PlayerState>,
+}
+
+#[commit]
+#[derive(Accounts)]
+pub struct CommitLot<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    #[account(
+        mut,
+        constraint = lot_bid.player == payer.key() @ GameError::NotLotOwner,
+        seeds = [LOT_SEED, lot_bid.player.as_ref(), &lot_bid.listing.to_le_bytes()],
+        bump = lot_bid.bump
+    )]
+    pub lot_bid: Account<'info, LotBid>,
 }

@@ -9,7 +9,7 @@ skip-lint = false
 stock_wars = "GZNyBfvyMZZ67cXugKMz9uagcv2fsWP3F64ZhdAQPEiV"
 
 [provider]
-cluster = "localnet"
+cluster = "Devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

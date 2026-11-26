@@ -45,7 +45,7 @@ function loadGameAuthority(): Keypair {
       Uint8Array.from(JSON.parse(fs.readFileSync(path, "utf8")))
     );
   }
-  // 32 bytes exactly; derives 5qxyM8obs6fzEGmjNAhszXahzrAqGX6oWPfXP6ABrcGm
+  // 32 bytes exactly; derives GZ1vGvyHCZHc5uqxRDigfK1tUEyjWZPD2XcdMxecvtGp
   return Keypair.fromSeed(Buffer.from("stockwars-test-game-authority-v1"));
 }
 const gameAuthority = loadGameAuthority();

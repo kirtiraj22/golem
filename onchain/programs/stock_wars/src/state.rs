@@ -1,43 +1,55 @@
 use anchor_lang::prelude::*;
 
-/// Where this player's single active auction currently is.
-///
-/// Idle -> Bidding -> (lost) Idle
-///                 -> (won)  Won -> RevealPending -> Revealed -> (next auction) Bidding
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
-pub enum AuctionPhase {
-    /// No auction in progress, no funds locked.
-    Idle,
-    /// Escrow is locked for `auction_id`; waiting for the game authority's result.
-    Bidding,
-    /// Player won; escrow has been charged. VRF reveal not yet requested.
-    Won,
-    /// VRF requested for `auction_id`; waiting for the callback.
-    RevealPending,
-    /// `reveal_random` holds the verified randomness for `auction_id`.
-    Revealed,
-}
-
-/// The only account in the program. One per wallet: seeds = ["player", wallet].
-/// This is the account that is delegated to the Ephemeral Rollup.
+/// One per wallet. Holds the AUTHORITATIVE spendable currency (free balance only;
+/// bid deposits live in LotBid.escrow, never double-counted).
 #[account]
 #[derive(InitSpace)]
 pub struct PlayerState {
-    /// Wallet that owns this state (only it can bid / request reveals / undelegate).
     pub authority: Pubkey,
-    /// Spendable in-game currency (neutral name; currency name is undecided).
+    /// Free, spendable in-game coins ("c" in the UI).
     pub balance: u64,
-    /// Amount currently locked for the active auction's bid.
+    /// Last applied off-chain balance sync (`apply_delta`). Makes backend retries idempotent.
+    pub sync_nonce: u64,
+    pub bump: u8,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
+pub enum LotStatus {
+    /// Accepting bids; deposit locked in `escrow`.
+    Open,
+    /// Player's bid beat the rival's: `price_paid` charged, VRF reveal allowed.
+    Won,
+    /// Rival won (or no bid): deposit refunded to balance.
+    Lost,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
+pub enum RevealState {
+    None,
+    Pending,
+    Done,
+}
+
+/// One per (player, lot). `listing` = the game's `StorageLot.listingNumber`
+/// (monotonic per player in `state.nextListingNumber`, so unique per wallet).
+/// Escrow is per-lot, so a player can hold bids on several lots at once,
+/// exactly like the existing game (state.lots[].playerBid).
+#[account]
+#[derive(InitSpace)]
+pub struct LotBid {
+    pub player: Pubkey,
+    pub listing: u64,
+    /// Player's current (total) bid, locked while Open. Zero after settlement.
     pub escrow: u64,
-    /// Off-chain auction / storage-unit id that escrow and reveal are bound to. 0 = none.
-    /// Must increase monotonically per player (enforced in `place_bid`).
-    pub auction_id: u64,
-    pub phase: AuctionPhase,
-    /// Incremented on every VRF request for the current auction; the callback only
-    /// accepts the current value, so stale/duplicate requests cannot overwrite the result.
+    /// Rival's final bid, supplied by GAME_AUTHORITY at settlement (rival is a server simulation).
+    pub rival_bid: u64,
+    /// What the winner paid (== winning escrow). Zero unless Won.
+    pub price_paid: u64,
+    pub status: LotStatus,
+    pub reveal: RevealState,
+    /// Incremented per VRF request; callback only accepts the current value.
     pub reveal_nonce: u32,
-    /// Verified VRF output for `auction_id` (valid only when phase == Revealed).
-    /// The frontend maps these 32 bytes to assets + quantities using its off-chain catalogue.
+    /// Verified VRF output. Valid when reveal == Done. Backend maps it to contents.
     pub reveal_random: [u8; 32],
     pub bump: u8,
 }
