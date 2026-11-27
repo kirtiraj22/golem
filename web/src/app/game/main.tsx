@@ -7,7 +7,9 @@ import MarketHud from "./components/hud/market-hud";
 import AuctionHud from "./components/hud/auction-hud";
 import { AuctionProvider, type AuctionProfile } from "./contexts/auction-context";
 import { MarketUiProvider } from "./contexts/market-ui-context";
+import { TownNewsUiProvider } from "./contexts/town-news-ui-context";
 import { WorldClockProvider } from "./contexts/world-clock-context";
+import TownHeadlines from "./components/hud/town-headlines";
 import soundManager from "./classes/sounds";
 
 const SolanaProvider = dynamic(
@@ -70,12 +72,15 @@ const Game = ({
         <AuctionProvider profile={playerProfile}>
           <WorldClockProvider>
             <MarketUiProvider>
-              <RenderLevel
-                levelConfig={levelConfig}
-                showLegacyHud={showLegacyHud}
-              />
-              <MarketHud />
-              {!showLegacyHud && <AuctionHud />}
+              <TownNewsUiProvider>
+                <RenderLevel
+                  levelConfig={levelConfig}
+                  showLegacyHud={showLegacyHud}
+                />
+                <MarketHud />
+                {!showLegacyHud && <AuctionHud />}
+                <TownHeadlines />
+              </TownNewsUiProvider>
             </MarketUiProvider>
           </WorldClockProvider>
         </AuctionProvider>
