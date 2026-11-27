@@ -29,6 +29,9 @@ const ControlsHint = () => {
       <div>
         <strong>E</strong> INTERACT · <strong>ESC</strong> CLOSE
       </div>
+      <div>
+        <strong>N</strong> TOWN NEWS
+      </div>
     </div>
   );
 };

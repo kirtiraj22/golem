@@ -5,6 +5,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import LevelState from "../../classes/level-state";
 import level1 from "../../levels/level-1";
 import { useMarketUi } from "../../contexts/market-ui-context";
+import { useTownNewsUi } from "../../contexts/town-news-ui-context";
 import { useAuction } from "../../contexts/auction-context";
 import { useWorldClock } from "../../contexts/world-clock-context";
 import type { TradeLogEntry } from "../../simulation/types";
@@ -34,6 +35,7 @@ const RenderLevel = ({
   const [level, setLevel] = useState<any>(null);
   const levelStateRef = useRef<LevelState | null>(null);
   const { isOpen: isMarketOpen, openMarket } = useMarketUi();
+  const { isOpen: isTownNewsOpen } = useTownNewsUi();
   const { isOpen: isAuctionOpen, openAuction, data, economy } = useAuction();
   const { clock } = useWorldClock();
   const day = data?.state.day ?? 1;
@@ -112,8 +114,10 @@ const RenderLevel = ({
   }, [economy]);
 
   useEffect(() => {
-    levelStateRef.current?.setInputEnabled(!isMarketOpen && !isAuctionOpen);
-  }, [isMarketOpen, isAuctionOpen]);
+    levelStateRef.current?.setInputEnabled(
+      !isMarketOpen && !isAuctionOpen && !isTownNewsOpen
+    );
+  }, [isMarketOpen, isAuctionOpen, isTownNewsOpen]);
   // console.log("Level: ",level);
 
   if (!level) {

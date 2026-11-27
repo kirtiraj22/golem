@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { Modal } from "@mantine/core";
 import { useAuction } from "../../contexts/auction-context";
 import { useMarketUi } from "../../contexts/market-ui-context";
+import { useTownNewsUi } from "../../contexts/town-news-ui-context";
 import { useWorldClock } from "../../contexts/world-clock-context";
 import {
   CATEGORY_LABELS,
@@ -584,6 +585,7 @@ const MarketHud = () => {
     closeMarket,
     selectMerchant,
   } = useMarketUi();
+  const { openHeadlines } = useTownNewsUi();
 
   const [rumourGoodId, setRumourGoodId] = useState<GoodId>("electronics");
 
@@ -962,6 +964,14 @@ const MarketHud = () => {
                     <p style={{ margin: "6px 0 0" }}>{headline.text}</p>
                   </div>
                 ))}
+                <button
+                  type="button"
+                  className="mk-btn mk-btn--sm"
+                  onClick={openHeadlines}
+                  style={{ marginTop: 2 }}
+                >
+                  Read full bulletin · N
+                </button>
               </Panel>
             </div>
 
