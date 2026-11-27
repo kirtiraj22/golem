@@ -14,7 +14,7 @@ export type ChallengeMessageInput = {
  */
 export function buildChallengeMessage(input: ChallengeMessageInput): string {
   return [
-    "The Copper Stall",
+    "Stock Wars",
     "",
     `Domain: ${input.domain}`,
     `Wallet: ${input.walletAddress}`,

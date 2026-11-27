@@ -51,7 +51,7 @@ export function getSupabaseAdmin(): SupabaseClient<Database> {
     },
     global: {
       headers: {
-        "X-Client-Info": "copper-stall-onboarding",
+        "X-Client-Info": "stock-wars-onboarding",
       },
     },
   });

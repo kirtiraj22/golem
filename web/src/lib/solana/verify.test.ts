@@ -19,7 +19,7 @@ function createWallet() {
 const wallet = createWallet();
 const message = new TextEncoder().encode(
   [
-    "The Copper Stall",
+    "Stock Wars",
     "",
     "Domain: localhost:3001",
     `Wallet: ${wallet.address}`,
