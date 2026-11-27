@@ -94,8 +94,9 @@ blockchain on as a superficial gimmick.
 - Dev server previously ran at http://localhost:3001.
 - The game route is /game.
 - Main game entry: web/src/app/game/main.tsx.
-- The user copied an existing game into this repo; some old Moodify
-  app files were removed/changed. There are many uncommitted changes.
+- The user copied an existing game into this repo; some old app files
+  were removed/changed during the Stock Wars conversion. There are many
+  uncommitted changes.
 - The user has not committed since copying/refactoring the game. Do
   not assume a clean Git tree.
 - Avoid destructive Git operations. Inspect git status before any
@@ -188,8 +189,8 @@ The merchant selector is controlled and merchant selection is working.
 maxBuy/`maxSell` UI helper calculations mirror simulation rules; this
 could drift if rules change, but it is not urgent.
 5.4 Current Market UI sample state
-A user screenshot/text report showed: - Day 2 - Stall: The Copper
-Stall - Player purse: 202 coins - Grain price 9, market stock 28, player
+A user screenshot/text report showed: - Day 2 - Stall: Stock Wars Trading
+Co. - Player purse: 202 coins - Grain price 9, market stock 28, player
 stock 2 - Wood price 8, market stock 20, player stock 8 - Tools price
 26, market stock 14, player stock 5 - Merchants: Aster (88), Bram (112),
 Cora (158) - Trade desk and recent transactions visible - Player can

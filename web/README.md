@@ -1,3 +1,8 @@
+# Stock Wars
+
+Stock Wars is a pixel-art storage-auction trading game set in Rook's Riverside.
+Win lockups, reveal the haul, and sell to the row's dealers.
+
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started

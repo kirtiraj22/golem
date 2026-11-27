@@ -32,8 +32,8 @@ assert.deepEqual(
   initial.merchants.map((merchant) => merchant.role).sort(),
   ["FURNITURE_DEALER", "PAWNBROKER", "SALVAGE_BUYER"]
 );
-assert.equal(initial.player.stall.name, "The Copper Stall");
-assert.equal(initial.player.stall.town, "Dealer Row");
+assert.equal(initial.player.stall.name, "Stock Wars Trading Co.");
+assert.equal(initial.player.stall.town, "Rook's Riverside");
 assert.deepEqual(initial.validationErrors, []);
 assert.deepEqual(validateState(world), []);
 
