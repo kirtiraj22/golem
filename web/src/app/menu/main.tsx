@@ -3,10 +3,10 @@
 "use client";
 
 /**
- * LEGACY: Cognivirues Outbreak startup/tutorial flow.
+ * LEGACY DISABLED: Cognivirues Outbreak startup/tutorial flow.
  *
  * This component is preserved for reference, but the active homepage no
- * longer imports it. The /menu route redirects to the Copper Stall title
+ * longer imports it. The /menu route redirects to the Stock Wars title
  * screen so the tutorial, journal, and cognitive-distortion startup sequence
  * cannot be launched accidentally.
  */

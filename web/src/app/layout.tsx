@@ -6,24 +6,27 @@ import { ColorSchemeScript, MantineProvider } from "@mantine/core";
 import configTheme from "~/constants/mantine-theme";
 
 export const metadata: Metadata = {
-  title: "The Copper Stall",
-  description: "A living market. Your trading story.",
-  applicationName: "The Copper Stall",
+  title: "Stock Wars",
+  description:
+    "Win the storage lockup. Flip the loot. Own the row in Rook's Riverside.",
+  applicationName: "Stock Wars",
   icons: {
     icon: [{ url: "/favicon.ico", sizes: "any" }],
     shortcut: ["/favicon.ico"],
     apple: [{ url: "/logo192.png", sizes: "192x192", type: "image/png" }],
   },
   openGraph: {
-    title: "The Copper Stall",
-    description: "A living market. Your trading story.",
-    siteName: "The Copper Stall",
+    title: "Stock Wars",
+    description:
+      "Win the storage lockup. Flip the loot. Own the row in Rook's Riverside.",
+    siteName: "Stock Wars",
     type: "website",
   },
   twitter: {
     card: "summary",
-    title: "The Copper Stall",
-    description: "A living market. Your trading story.",
+    title: "Stock Wars",
+    description:
+      "Win the storage lockup. Flip the loot. Own the row in Rook's Riverside.",
   },
 };
 

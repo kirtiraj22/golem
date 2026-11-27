@@ -193,3 +193,20 @@ body {
     --pixel-size: 7;
   }
 }
+
+/* Keep the fixed HUD readable when the viewport is too narrow for the
+ * auction panel and the centered world clock to sit side by side. */
+@media (max-width: 640px) {
+  .hud-auction-panel {
+    width: 190px !important;
+  }
+
+  .hud-world-clock {
+    top: 132px !important;
+  }
+
+  .hud-controls-hint {
+    display: none;
+  }
+}
+

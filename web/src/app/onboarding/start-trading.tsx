@@ -27,7 +27,10 @@ const GOLD = "#f4c95d";
 const GREEN = "#a8d98a";
 const RED = "#8f2f1f";
 
-const NAME_STORAGE_KEY = "copper-stall:onboarding-name";
+const NAME_STORAGE_KEY = "stock-wars:onboarding-name";
+// LEGACY DISABLED: keep reading the old key so existing players do not lose
+// their saved display name during the rebrand.
+const LEGACY_NAME_STORAGE_KEY = "copper-stall:onboarding-name";
 
 type WalletState =
   | "detecting"
@@ -252,7 +255,9 @@ export default function StartTrading({
   }, []);
 
   useEffect(() => {
-    const savedName = window.sessionStorage.getItem(NAME_STORAGE_KEY);
+    const savedName =
+      window.sessionStorage.getItem(NAME_STORAGE_KEY) ??
+      window.sessionStorage.getItem(LEGACY_NAME_STORAGE_KEY);
 
     if (savedName) {
       setName(savedName);
@@ -262,6 +267,7 @@ export default function StartTrading({
   useEffect(() => {
     if (name) {
       window.sessionStorage.setItem(NAME_STORAGE_KEY, name);
+      window.sessionStorage.removeItem(LEGACY_NAME_STORAGE_KEY);
     }
   }, [name]);
 
