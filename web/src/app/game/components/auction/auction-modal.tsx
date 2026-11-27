@@ -796,7 +796,7 @@
 //     <Modal
 //       opened={isOpen}
 //       onClose={closeAuction}
-//       title="ROOK'S RIVERSIDE STORAGE AUCTION"
+//       title="STOCK WARS · ROOK'S RIVERSIDE AUCTION"
 //       size="xl"
 //       centered
 //       zIndex={1000}
@@ -2083,8 +2083,8 @@ function HaulTab({ onGoToLots }: { onGoToLots: () => void }) {
         </h3>
         <p className="ah-text">
           Win a storage lot, open the vault, and the contents will appear here.
-          Take the loot to a specialist dealer on Dealer Row and sell what they
-          actually want.
+          Take the loot to a specialist dealer on Rook&apos;s Riverside and sell
+          what they actually want.
         </p>
         <button
           type="button"
@@ -2191,7 +2191,7 @@ function LedgerTab() {
       <Panel title="Market headlines" tone="lo">
         <p className="ah-text" style={{ marginTop: 0 }}>
           Fresh headlines move dealer demand for two days. Rumours work the same
-          way but can be started from Dealer Row.
+          way but can be started from Rook&apos;s Riverside.
         </p>
         {state.market.headlines.map((headline) => (
           <div key={headline.id} className="ah-clip">
@@ -2290,7 +2290,7 @@ export default function AuctionHouseModal() {
     <Modal
       opened={isOpen}
       onClose={closeAuction}
-      title="ROOK'S RIVERSIDE STORAGE AUCTION"
+      title="STOCK WARS · ROOK'S RIVERSIDE AUCTION"
       size="min(1180px, 96vw)"
       centered
       zIndex={1000}

@@ -13,6 +13,8 @@ import {
   PLACEMENT_TYPE_INFECTED_HERO,
   PLACEMENT_TYPE_MERCHANT,
   PLACEMENT_TYPE_AUCTIONEER,
+  PLACEMENT_TYPE_SHOPKEEPER,
+  PLACEMENT_TYPE_SHOP_SIGN,
   PLACEMENT_TYPE_PROP,
   PLACEMENT_TYPE_KEY,
   PLACEMENT_TYPE_LOCK,
@@ -49,6 +51,8 @@ import { ThiefPlacement } from "./game-objects/thief-placement";
 import { InfectedHeroPlacement } from "./game-objects/infected-hero-placement";
 import { MerchantPlacement } from "./game-objects/merchant-placement";
 import { AuctioneerPlacement } from "./game-objects/auctioneer-placement";
+import { ShopkeeperPlacement } from "./game-objects/shopkeeper-placement";
+import { ShopSignPlacement } from "./game-objects/shop-sign-placement";
 import { PropPlacement } from "./game-objects/prop-placement";
 
 const placementTypeClassMap = {
@@ -76,6 +80,8 @@ const placementTypeClassMap = {
   [PLACEMENT_TYPE_INFECTED_HERO]: InfectedHeroPlacement,
   [PLACEMENT_TYPE_MERCHANT]: MerchantPlacement,
   [PLACEMENT_TYPE_AUCTIONEER]: AuctioneerPlacement,
+  [PLACEMENT_TYPE_SHOPKEEPER]: ShopkeeperPlacement,
+  [PLACEMENT_TYPE_SHOP_SIGN]: ShopSignPlacement,
   [PLACEMENT_TYPE_PROP]: PropPlacement,
 };
 

@@ -17,13 +17,13 @@ const panelStyle: React.CSSProperties = {
   color: INK,
   fontFamily:
     'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
-  left: 16,
+  left: 14,
   letterSpacing: "0.02em",
   lineHeight: 1.4,
-  padding: "7px 9px",
+  padding: "8px 10px",
   position: "fixed",
-  top: 12,
-  width: 196,
+  top: 14,
+  width: 204,
   zIndex: "var(--ui-popup-z-index)",
 };
 
@@ -68,6 +68,7 @@ const AuctionHud = () => {
     <>
       <button
         type="button"
+        className="hud-auction-panel"
         onClick={() => openAuction()}
         style={{
           ...panelStyle,
@@ -82,16 +83,27 @@ const AuctionHud = () => {
           style={{
             borderBottom: "1px solid #8b6b3f",
             display: "flex",
-            fontSize: 9,
+            fontSize: 10,
             fontWeight: 800,
             justifyContent: "space-between",
             letterSpacing: "0.08em",
-            marginBottom: 5,
+            marginBottom: 2,
             paddingBottom: 4,
           }}
         >
-          <span>STORAGE AUCTIONS</span>
+          <span>STOCK WARS</span>
           <span>{loading && !state ? "···" : "E"}</span>
+        </div>
+        <div
+          style={{
+            color: MUTED,
+            fontSize: 7,
+            fontWeight: 700,
+            letterSpacing: "0.07em",
+            marginBottom: 5,
+          }}
+        >
+          ROOK&apos;S RIVERSIDE · STORAGE AUCTIONS
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
           <span style={{ color: MUTED, fontSize: 9, fontWeight: 700 }}>PURSE</span>

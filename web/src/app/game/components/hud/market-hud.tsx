@@ -695,7 +695,7 @@ const MarketHud = () => {
       <Modal
         opened={isOpen}
         onClose={closeMarket}
-        title="DEALER ROW"
+        title="ROOK'S RIVERSIDE DEALERS"
         size="min(1180px, 96vw)"
         centered
         zIndex={1000}

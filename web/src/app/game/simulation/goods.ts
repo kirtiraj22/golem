@@ -89,9 +89,9 @@ export function createInventory(partial: Partial<Inventory> = {}): Inventory {
 }
 
 export const PLAYER_STALL = {
-  id: "copper-stall",
-  name: "The Copper Stall",
-  town: "Dealer Row",
+  id: "stock-wars",
+  name: "Stock Wars Trading Co.",
+  town: "Rook's Riverside",
 };
 
 export const PLAYER_STARTING_BALANCE = 250;

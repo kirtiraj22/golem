@@ -23,13 +23,15 @@ const WorldClock = () => {
 
   return (
     <div
+      className="hud-world-clock"
       style={{
         ...panelStyle,
         left: "50%",
-        padding: "5px 10px",
+        padding: "6px 12px",
         textAlign: "center",
-        top: 12,
+        top: 14,
         transform: "translateX(-50%)",
+        whiteSpace: "nowrap",
       }}
     >
       <div style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.3 }}>

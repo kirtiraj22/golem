@@ -8,7 +8,6 @@ import {
 } from "~/constants/helpers";
 import Placement from "../placement";
 import Body from "../../components/object-graphics/body";
-import { GOOD_IDS } from "../../simulation/types";
 
 export type MerchantRole =
   | "pawnbroker"
@@ -31,6 +30,7 @@ type MerchantPlacementProperties = {
   role: MerchantRole;
   frameCoordinate?: string;
   routine?: MerchantRoutine;
+  shopLabel?: string;
 };
 
 const DEFAULT_MERCHANT_FRAMES: Record<
@@ -394,11 +394,8 @@ export class MerchantPlacement extends Placement {
       typeof merchantState?.balance === "number"
         ? ` · ${merchantState.balance}c`
         : "";
-    const stock = merchantState?.inventory
-      ? ` · ${GOOD_IDS.map(
-          (goodId) =>
-            `${goodId.charAt(0).toUpperCase()}${merchantState.inventory[goodId]}`
-        ).join(" ")}`
+    const shop = this.properties.shopLabel
+      ? `${this.properties.shopLabel} · `
       : "";
 
     return (
@@ -414,8 +411,8 @@ export class MerchantPlacement extends Placement {
             {balance}
           </div>
           <div style={{ fontSize: 5, opacity: 0.78 }}>
+            {shop}
             {this.activityLabel}
-            {stock}
           </div>
         </div>
         {this.isHeroFacingMe() && <div style={promptStyle}>E</div>}

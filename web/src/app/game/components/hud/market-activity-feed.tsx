@@ -21,7 +21,7 @@ const feedStyle: React.CSSProperties = {
   left: 16,
   letterSpacing: "0.01em",
   lineHeight: 1.45,
-  maxWidth: "min(340px, calc(100vw - 190px))",
+  maxWidth: "min(340px, calc(100vw - 220px))",
   overflowWrap: "anywhere",
   padding: "8px 10px",
   pointerEvents: "none",
@@ -57,7 +57,7 @@ const MarketActivityFeed = () => {
     snapshot.goods.find((good) => good.id === goodId)?.name ?? goodId;
 
   return (
-    <div style={feedStyle}>
+    <div className="hud-market-feed" style={feedStyle}>
       <div
         style={{
           borderBottom: "1px solid #8b6b3f",

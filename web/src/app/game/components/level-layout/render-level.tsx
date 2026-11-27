@@ -13,6 +13,7 @@ import DeathMessage from "../hud/death-message";
 import TopHud from "../hud/top-hud";
 import WorldClock from "../hud/world-clock";
 import MarketActivityFeed from "../hud/market-activity-feed";
+import ControlsHint from "../hud/controls-hint";
 import RenderBattle from "./render-battle";
 import Dialog from "../hud/dialog";
 import Body from "../object-graphics/body";
@@ -181,6 +182,7 @@ const RenderLevel = ({
 
         <WorldClock />
         <MarketActivityFeed />
+        <ControlsHint />
         {/* The Peter/health/flour/inventory HUD belongs to the legacy game. */}
         {showLegacyHud && <TopHud level={level} />}
 
