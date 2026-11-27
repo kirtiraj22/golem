@@ -15,9 +15,9 @@ import {
   ChainTxError,
   ERR,
   applyDeltaOnChain,
+  readDeliveredRevealRandomness,
   readLot,
   readPlayer,
-  retryRevealOnChain,
   settleLotOnChain,
 } from "~/lib/solana/stock-wars-server";
 import { rollContentsFromRandomness } from "./generator";
@@ -348,7 +348,8 @@ export async function verifyChainBid(
 
 // ---------------------------------------------------------------- VRF reveal
 
-const STUCK_REVEAL_MS = 45_000;
+const REVEAL_SCAN_MS = 10_000;
+const revealScannedAt = new Map<string, number>();
 
 /** Pull finished VRF results into the lot (contents rolled from verified randomness, persisted in the row). */
 export async function resolveChainReveals(
@@ -381,14 +382,28 @@ export async function resolveChainReveals(
       lot.revealReadyAt = now.toISOString(); // existing refreshLots loop moves it to "revealed" + inventory
       changed = true;
     } else if (chainLot.reveal === "pending") {
-      const last = Date.parse(lot.revealRequestedAt ?? "") || 0;
-      if (now.getTime() - last > STUCK_REVEAL_MS) {
-        try {
-          await retryRevealOnChain(pk, lot.listingNumber, chainLot.layer);
-        } catch {
-          /* next poll retries */
-        }
-        lot.revealRequestedAt = now.toISOString();
+      // The deployed callback cannot finish within the oracle's compute budget.
+      // Do not send more reveal requests. Recover the already-delivered VRF
+      // output from the failed callback transaction instead.
+      const scanKey = `${pk.toBase58()}:${lot.listingNumber}:${chainLot.revealNonce}`;
+      if (now.getTime() - (revealScannedAt.get(scanKey) ?? 0) < REVEAL_SCAN_MS)
+        continue;
+      revealScannedAt.set(scanKey, now.getTime());
+      let delivered: string | null = null;
+      try {
+        delivered = await readDeliveredRevealRandomness(
+          pk,
+          lot.listingNumber,
+          chainLot.revealNonce
+        );
+      } catch {
+        /* transient RPC error; try again on the next load */
+      }
+      if (delivered) {
+        lot.revealRandom = delivered;
+        lot.contents = rollContentsFromRandomness(lot, delivered, state.day);
+        lot.revealReadyAt = now.toISOString();
+        lot.revealError = undefined;
         changed = true;
       }
     } else {

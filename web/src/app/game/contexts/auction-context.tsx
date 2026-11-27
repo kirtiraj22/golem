@@ -368,7 +368,7 @@ export const AuctionProvider = ({
       const ok = await runAction(
         { action: "reveal", lotId },
         "Waiting for verified randomness…",
-        "Vault open. The contents are in your haul."
+        "Reveal requested. Opening the vault…"
       );
 
       if (ok) {

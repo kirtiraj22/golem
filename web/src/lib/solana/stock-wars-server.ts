@@ -8,6 +8,7 @@ import {
 import {
   DELEGATION_PROGRAM_ID,
   STOCK_WARS_PROGRAM_ID,
+  VRF_PROGRAM_ID,
   decodeLotBid,
   decodePlayerState,
   ixApplyDelta,
@@ -172,6 +173,105 @@ export async function readLot(
   if (lot.player !== wallet.toBase58() || lot.listing !== listing)
     throw new Error("LotBid does not match its seeds");
   return { ...lot, layer: read.layer };
+}
+
+const CALLBACK_REVEAL_DISC = Buffer.from([
+  148, 151, 238, 89, 30, 255, 110, 4,
+]);
+const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const deliveredRevealCache = new Map<string, string>();
+
+function decodeBase58(value: string): Uint8Array {
+  const bytes = [0];
+  for (const char of value) {
+    const digit = BASE58.indexOf(char);
+    if (digit < 0) throw new Error("Invalid base58 data");
+    let carry = digit;
+    for (let i = 0; i < bytes.length; i += 1) {
+      carry += bytes[i]! * 58;
+      bytes[i] = carry & 0xff;
+      carry >>= 8;
+    }
+    while (carry > 0) {
+      bytes.push(carry & 0xff);
+      carry >>= 8;
+    }
+  }
+  for (let i = 0; i < value.length && value[i] === "1"; i += 1) bytes.push(0);
+  return Uint8Array.from(bytes.reverse());
+}
+
+/**
+ * The deployed VRF callback needs ~386k CU on a delegated lot, but the oracle
+ * only supplies ~255k. The callback therefore fails after the VRF output has
+ * already been delivered in the transaction. Read that delivered output so the
+ * off-chain game can finish the reveal without issuing another VRF request.
+ */
+export async function readDeliveredRevealRandomness(
+  wallet: PublicKey,
+  listing: number,
+  nonce: number
+): Promise<string | null> {
+  const pda = lotPda(wallet, listing);
+  const cacheKey = `${pda.toBase58()}:${nonce}`;
+  const cached = deliveredRevealCache.get(cacheKey);
+  if (cached) return cached;
+
+  const conn = erConnection();
+  let before: string | undefined;
+  for (let page = 0; page < 2; page += 1) {
+    const signatures = await conn.getSignaturesForAddress(pda, {
+      limit: 25,
+      before,
+    });
+    if (!signatures.length) break;
+
+    for (const entry of signatures) {
+      const tx = await conn.getTransaction(entry.signature, {
+        commitment: "confirmed",
+        maxSupportedTransactionVersion: 0,
+      });
+      if (!tx) continue;
+
+      const logs = tx.meta?.logMessages ?? [];
+      if (!logs.some((line) => line.includes("Instruction: CallbackReveal")))
+        continue;
+
+      const keys = tx.transaction.message.staticAccountKeys;
+      const invokedVrf = tx.transaction.message.compiledInstructions.some(
+        (ix) => keys[ix.programIdIndex]?.equals(VRF_PROGRAM_ID)
+      );
+      if (!invokedVrf) continue;
+
+      for (const group of tx.meta?.innerInstructions ?? []) {
+        for (const ix of group.instructions) {
+          if (!("programIdIndex" in ix)) continue;
+          if (!keys[ix.programIdIndex]?.equals(STOCK_WARS_PROGRAM_ID)) continue;
+          const accounts = ix.accounts.map((i) => keys[i]?.toBase58());
+          if (!accounts.includes(pda.toBase58())) continue;
+
+          let data: Buffer;
+          try {
+            data = Buffer.from(decodeBase58(ix.data));
+          } catch {
+            continue;
+          }
+          if (
+            data.length !== 44 ||
+            !data.subarray(0, 8).equals(CALLBACK_REVEAL_DISC) ||
+            data.readUInt32LE(40) !== nonce
+          )
+            continue;
+
+          const randomness = data.subarray(8, 40).toString("hex");
+          deliveredRevealCache.set(cacheKey, randomness);
+          return randomness;
+        }
+      }
+    }
+    before = signatures[signatures.length - 1]?.signature;
+  }
+  return null;
 }
 
 function customCode(err: unknown): number | undefined {
